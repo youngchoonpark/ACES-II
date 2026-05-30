@@ -65,7 +65,7 @@ subroutine get_moinfo(string,fileout)
       do i = 1, nirrep
          yesno = .false.
          do j = 1, nbas
-            if (ivmlsym(j)==i .and. yesno==.false.) then
+            if (ivmlsym(j)==i .and. .not.yesno) then
                lab(i)=molab(j)  
                yesno = .true.
             endif

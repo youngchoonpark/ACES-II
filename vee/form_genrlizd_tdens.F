@@ -216,8 +216,11 @@ C
                   R0       = Z0
 #ifdef _DEBUG_LVL0
                    Write(6, "(a,2F12.8)") "The <L|R>;R0: ", Z,R0
-                  call check_tdens_lists(irrepx,scr,maxcor,461,2,iuhf)
-                  call check_tdens_lists(irrepy,scr,maxcor,444,0,iuhf)
+C  check_tdens_lists is a _DEBUG_LVL0-only diagnostic that is not defined
+C  anywhere in the tree (undefined symbol at link time); commented out so vee
+C  links. Restore once the routine is provided.
+CSSS              call check_tdens_lists(irrepx,scr,maxcor,461,2,iuhf)
+CSSS              call check_tdens_lists(irrepy,scr,maxcor,444,0,iuhf)
 #endif 
                   IF(MBPT2 .OR. LCCD .OR. LCCSD .OR. RCCD .OR. DRCCD 
      &                    .OR. CC2) R0=0.0d0

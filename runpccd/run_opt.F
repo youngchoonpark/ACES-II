@@ -3,6 +3,7 @@
 
       integer icore, is, ius
       logical Do_derint
+      character*80 szGExtrap
 
       ndrgeo=0
       szGExtrap = 'xa2proc grad_extrp'

@@ -1,0 +1,337 @@
+diff --git a/Makefiles/GNUmakefile b/Makefiles/GNUmakefile
+index 6c28a4e..9012f4f 100644
+--- a/Makefiles/GNUmakefile
++++ b/Makefiles/GNUmakefile
+@@ -769,9 +769,12 @@ ifeq (${CMPLR},gnu) ############################################################
+    C_SUFFIX = 1
+    CXX = g++ -c
+    CC  = gcc -c
+-   FC  = gfortran  -c 
++   FC  = gfortran  -c
+    F9XC = gfortran -c
+    LD  = gfortran
++ # gfortran searches module/include dirs with -I (not the default -M, which it
++ # rejects as an unknown option when compiling .f90/.f95 sources).
++   MODDIRS_PREFIX = -I
+  # make sure the other compilers f9x, cc, and CC all get double alignment
+    CFLAGS  = -malign-double
+    FFLAGS  = -malign-double -Wall -fno-second-underscore -finit-local-zero
+@@ -814,6 +817,12 @@ ifeq (${CMPLR},gnu) ############################################################
+        FFLAGS  = -fno-second-underscore -finit-local-zero \
+                  -fno-range-check -fdefault-integer-8 \
+                  -fallow-argument-mismatch -std=legacy
++     # .f90/.f95 (free-form) sources are compiled with F9XFLAGS, not FFLAGS.
++     # Mirror the same flags so they share 8-byte integers (ABI-consistent with
++     # the .F/.f sources) and tolerate the legacy loose interfaces.
++       F9XFLAGS = -fno-second-underscore -finit-local-zero \
++                  -fno-range-check -fdefault-integer-8 \
++                  -fallow-argument-mismatch -std=legacy
+        DEFINES       += -D_USE_SBRK -DF_ADR=integer*8
+        FLAG_OPTIMIZE += -O2 -pipe -march=${MARCH}
+    endif
+diff --git a/blockdave/NLMOcorrect.f90 b/blockdave/NLMOcorrect.f90
+index e854d77..af8acf2 100644
+--- a/blockdave/NLMOcorrect.f90
++++ b/blockdave/NLMOcorrect.f90
+@@ -6,7 +6,7 @@ subroutine NLMOcorrect(cVals,cEVECS,Nsize,NUMSOL)
+   double precision::THRESH
+   integer::zz,SSPIN,ICOUNT,IIRREP,AIRREP,I,A
+ CHARACTER*12 STRINGI(2), STRINGA(2)
+-LOGICAL incQM1, FIRST
++LOGICAL incQM1, FIRST, NLS_EXIST, NBO_EXIST
+   double precision::SCR(Nsize)
+   double precision::bkupeVecs(NSize,NUMSOL),bkupeVals(NUMSOL)
+   integer::QM1count
+diff --git a/blockdave/blockdavid_init.F b/blockdave/blockdavid_init.F
+index 32e950a..6be90be 100644
+--- a/blockdave/blockdavid_init.F
++++ b/blockdave/blockdavid_init.F
+@@ -4,7 +4,7 @@
+       Implicit Double Precision(A-H,O-Z)
+       integer jj,nroots,totVecs,NUMSOL
+       Dimension Work(Maxcor)
+-      Logical Converged,DONLS,CISflag
++      Logical Converged,DONLS,CISflag,CISfilterFlag
+       integer filterIndx
+       logical unconvergedRoots(Nblocks)
+       double precision thetaOld(Nblocks),diff(Nblocks)
+diff --git a/blockdave/filterRoots.f90 b/blockdave/filterRoots.f90
+index 1202893..5a0d6ae 100644
+--- a/blockdave/filterRoots.f90
++++ b/blockdave/filterRoots.f90
+@@ -10,7 +10,7 @@ subroutine filterRoots(cVals,cEVECS,Nsize,Nblocks,NUMSOL,&
+   double precision::THRESH
+   integer::jj,zz,SSPIN,ICOUNT,IIRREP,AIRREP,I,A
+ CHARACTER*12 STRINGI(2), STRINGA(2)
+-LOGICAL incQM1, FIRST
++LOGICAL incQM1, FIRST, NLS_EXIST, NBO_EXIST
+   double precision::SCR(Nsize),tmpEVAL
+   double precision::bkupeVecs(NSize,Nblocks),bkupeVals(Nblocks)
+   integer::QM1count
+diff --git a/blockdave/nlsZero.F b/blockdave/nlsZero.F
+index c2309bc..06084c8 100644
+--- a/blockdave/nlsZero.F
++++ b/blockdave/nlsZero.F
+@@ -11,6 +11,7 @@ C      445:    C(ij,ab )       a<b ; i<j     BB BB
+ C      446:    C(Ij,Ab )       A,b ; I,j     AB A
+ C
+       IMPLICIT INTEGER (A-Z)
++      CHARACTER*1 BLANK
+       DOUBLE PRECISION SCR(MAXCOR)
+       DOUBLE PRECISION VALUE,O_SCALE,V_SCALE
+       DOUBLE PRECISION VAL1,VAL2,DIFF,THRES2
+diff --git a/blockdave/nlsZeroPartTwo.F b/blockdave/nlsZeroPartTwo.F
+index f249516..359ada1 100644
+--- a/blockdave/nlsZeroPartTwo.F
++++ b/blockdave/nlsZeroPartTwo.F
+@@ -11,6 +11,7 @@ C      445:    C(ij,ab )       a<b ; i<j     BB BB
+ C      446:    C(Ij,Ab )       A,b ; I,j     AB A
+ C
+       IMPLICIT INTEGER (A-Z)
++      CHARACTER*1 BLANK
+       DOUBLE PRECISION SCR(MAXCOR)
+       DOUBLE PRECISION VALUE,O_SCALE,V_SCALE
+       DOUBLE PRECISION VAL1,VAL2,DIFF,THRES2
+diff --git a/get_acesinfo/get_moinfo.f90 b/get_acesinfo/get_moinfo.f90
+index c2bd7a5..0c96491 100644
+--- a/get_acesinfo/get_moinfo.f90
++++ b/get_acesinfo/get_moinfo.f90
+@@ -65,7 +65,7 @@ subroutine get_moinfo(string,fileout)
+       do i = 1, nirrep
+          yesno = .false.
+          do j = 1, nbas
+-            if (ivmlsym(j)==i .and. yesno==.false.) then
++            if (ivmlsym(j)==i .and. .not.yesno) then
+                lab(i)=molab(j)  
+                yesno = .true.
+             endif
+diff --git a/pccd/pccd_checkintms.F b/pccd/pccd_checkintms.F
+index 4603db0..b6a38ba 100644
+--- a/pccd/pccd_checkintms.F
++++ b/pccd/pccd_checkintms.F
+@@ -3,7 +3,7 @@
+       Implicit Integer(A-Z)
+    
+       Double Precision Work(Maxcor) 
+-      Logical UHF 
++      Logical UHF, Ao_lad
+      
+ #include "machsp.com"
+ #include "sympop.com"
+diff --git a/pccd/pccd_dens.F b/pccd/pccd_dens.F
+index bdd5994..0a34166 100644
+--- a/pccd/pccd_dens.F
++++ b/pccd/pccd_dens.F
+@@ -2,7 +2,7 @@
+ 
+       Implicit Double Precision(A-H,O-Z)
+       Dimension Work(Maxcor)
+-      LOGICAL PCCD,CCD,LCCD
++      LOGICAL PCCD,CCD,LCCD,Nonhf_ref
+ 
+ #include "machsp.com"
+ #include "sym.com"
+diff --git a/pccd/pccd_e4s.F b/pccd/pccd_e4s.F
+index ad20a41..d746af5 100644
+--- a/pccd/pccd_e4s.F
++++ b/pccd/pccd_e4s.F
+@@ -3,7 +3,7 @@
+       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+       INTEGER DIRPRD,POP1,POP2,VRT1,VRT2
+       DIMENSION ICORE(MAXCOR)
+-      LOGICAL LAMBDA 
++      LOGICAL LAMBDA,NONHF
+       COMMON/SYM/ POP1(8),POP2(8),VRT1(8),VRT2(8),NTAA,NTBB,NF1AA,
+      &            NF1BB,NF2AA,NF2BB
+       COMMON /MACHSP/ IINTLN,IFLTLN,IINTFP,IALONE,IBITWD
+diff --git a/pccd/pccd_form_dropmo_urotgrads.F b/pccd/pccd_form_dropmo_urotgrads.F
+index 210ca84..c64f3d0 100644
+--- a/pccd/pccd_form_dropmo_urotgrads.F
++++ b/pccd/pccd_form_dropmo_urotgrads.F
+@@ -2,9 +2,9 @@
+       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+ 
+       INTEGER POP,VRT,DIRPRD,POP2,VRT2
+-      LOGICAL QRHF,NONHF,ROHF,RELAXED
++      LOGICAL QRHF,NONHF,ROHF,RELAXED,Bredundant
+       LOGICAL CCD,CANON,NONHF_TERMS_EXIST,TRULY_NONHF
+-      LOGICAL MBPT2,MBPT3,M4DQ,M4SDQ,M4SDTQ,QCISD,CCSD,UCC
++      LOGICAL MBPT2,MBPT3,M4DQ,M4SDQ,M4SDTQ,QCISD,CCSD,UCC,M4DSQ,QCID
+ C
+       DIMENSION ICORE(MAXCOR)
+ 
+diff --git a/pccd/pccd_form_urotgrads.F b/pccd/pccd_form_urotgrads.F
+index 5ee82d6..1930c15 100644
+--- a/pccd/pccd_form_urotgrads.F
++++ b/pccd/pccd_form_urotgrads.F
+@@ -2,9 +2,9 @@
+       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+ 
+       INTEGER POP,VRT,DIRPRD,POP2,VRT2
+-      LOGICAL QRHF,NONHF,ROHF,RELAXED
++      LOGICAL QRHF,NONHF,ROHF,RELAXED,Bredundant
+       LOGICAL CCD,CANON,NONHF_TERMS_EXIST,TRULY_NONHF
+-      LOGICAL MBPT2,MBPT3,M4DQ,M4SDQ,M4SDTQ,QCISD,CCSD,UCC
++      LOGICAL MBPT2,MBPT3,M4DQ,M4SDQ,M4SDTQ,QCISD,CCSD,UCC,M4DSQ,QCID
+ C
+       DIMENSION ICORE(MAXCOR)
+ 
+diff --git a/pccd/pccd_g3all.F b/pccd/pccd_g3all.F
+index 5e4a47f..8a2f1b2 100644
+--- a/pccd/pccd_g3all.F
++++ b/pccd/pccd_g3all.F
+@@ -2,6 +2,7 @@
+      &                      IRREP)
+ 
+       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
++      INTEGER DISSYT,NUMSYT
+       DIMENSION T1(DISSYT,NUMSYT),T2(DISSYT,NUMSYT),G(NUMSYT,NUMSYT)
+       COMMON/SYM/POP(8,2),VRT(8,2),NTAA,NTBB,NF1AA,NF1BB,NF2AA,NF2BB
+       COMMON /SYMINF/ NSTART,NIRREP,IRREPA(255),IRREPB(255),DIRPRD(8,8)
+diff --git a/pccd/pccd_genint.F b/pccd/pccd_genint.F
+index bfc8f7c..65039a6 100644
+--- a/pccd/pccd_genint.F
++++ b/pccd/pccd_genint.F
+@@ -4,7 +4,7 @@ C
+ C
+       IMPLICIT INTEGER (A-Z)
+       DOUBLE PRECISION C1,C2,C3,C4,FACT,C5
+-      LOGICAL PCCD,CCD,LCCD
++      LOGICAL PCCD,CCD,LCCD,NONHF
+ C
+       DIMENSION ICORE(MAXCOR)
+ 
+diff --git a/pccd/pccd_gfock_debug.F b/pccd/pccd_gfock_debug.F
+index cf057b8..1e98f51 100644
+--- a/pccd/pccd_gfock_debug.F
++++ b/pccd/pccd_gfock_debug.F
+@@ -2,9 +2,9 @@
+       IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+ 
+       INTEGER POP,VRT,DIRPRD,POP2,VRT2
+-      LOGICAL QRHF,NONHF,ROHF,RELAXED
++      LOGICAL QRHF,NONHF,ROHF,RELAXED,Bredundant
+       LOGICAL CCD,CANON,NONHF_TERMS_EXIST,TRULY_NONHF
+-      LOGICAL MBPT2,MBPT3,M4DQ,M4SDQ,M4SDTQ,QCISD,CCSD,UCC
++      LOGICAL MBPT2,MBPT3,M4DQ,M4SDQ,M4SDTQ,QCISD,CCSD,UCC,M4DSQ,QCID
+ C
+       DIMENSION ICORE(MAXCOR)
+ 
+diff --git a/pccd/pccd_quad2.F b/pccd/pccd_quad2.F
+index 674d962..a611ce3 100644
+--- a/pccd/pccd_quad2.F
++++ b/pccd/pccd_quad2.F
+@@ -42,7 +42,7 @@
+      &                           NOCCSQ,DISSYW,DISSYT,NUMSYW,NUMSYT,
+      &                           IRREP,ICORE(I003),FACT,IUHF)
+               ELSE
+-                 CALL INSMEM("PCC_QUAD2",,MAXCOR)
++                 CALL INSMEM("PCC_QUAD2",I004,MAXCOR)
+               ENDIF
+             ELSE
+             ENDIF
+diff --git a/pccd/pccd_rotate.F b/pccd/pccd_rotate.F
+index c60b05a..59a5a20 100644
+--- a/pccd/pccd_rotate.F
++++ b/pccd/pccd_rotate.F
+@@ -1,7 +1,7 @@
+       SUBROUTINE PCCD_ROTATE(U,ICORE,MAXCOR,ISPIN,NBAS,ICYCLE)
+       IMPLICIT INTEGER (A-Z)
+       PARAMETER(MINISIZ=50)
+-      LOGICAL PRINT,PRINT2
++      LOGICAL PRINT,PRINT2,DIIS
+       DOUBLE PRECISION ONE,ONEM,ZILCH,SNRM2,X,ERROR,SDOT,DIISCOEF
+       CHARACTER*1 ISP(2)
+       DIMENSION ICORE(MAXCOR),error(minisiz,minisiz),DIISCOEF(MINISIZ)
+diff --git a/pccd/pccd_uldriver.F b/pccd/pccd_uldriver.F
+index 85a86c6..fa12ff1 100644
+--- a/pccd/pccd_uldriver.F
++++ b/pccd/pccd_uldriver.F
+@@ -7,7 +7,7 @@
+       DIMENSION ECORR(3)
+       INTEGER RELCYC
+ 
+-      LOGICAL NONHF
++      LOGICAL NONHF,TERM1,TERM2,TERM3,TERM4,TERM5,TERM6
+       LOGICAL CIS,EOM
+       LOGICAL DO_TAU
+       LOGICAL PCCD,CCD,LCCD
+diff --git a/pccd/pccd_urdriver.F b/pccd/pccd_urdriver.F
+index c1288c3..5b8105c 100644
+--- a/pccd/pccd_urdriver.F
++++ b/pccd/pccd_urdriver.F
+@@ -7,7 +7,7 @@
+       DIMENSION ECORR(3)
+       INTEGER RELCYC
+ 
+-      LOGICAL NONHF
++      LOGICAL NONHF,LINCC
+       LOGICAL PCCD,CCD,LCCD
+       LOGICAL CIS,EOM
+       LOGICAL BRUECK,BRKCNV
+diff --git a/runpccd/do_natural_orbs.F b/runpccd/do_natural_orbs.F
+index 0070e97..1eedb42 100644
+--- a/runpccd/do_natural_orbs.F
++++ b/runpccd/do_natural_orbs.F
+@@ -2,7 +2,7 @@
+       subroutine do_natural_orbs
+       implicit integer (a-z)
+       integer ndropa,icalc,iabcd,igamma_abcd
+-      logical NOS_Exist
++      logical NOS_Exist, geom_opt, vib_specs, analytical_gradient
+      
+ #include "flags.h"
+ #include "flags.com"
+diff --git a/runpccd/job_control.F b/runpccd/job_control.F
+index 2fe102f..272fbe2 100644
+--- a/runpccd/job_control.F
++++ b/runpccd/job_control.F
+@@ -6,15 +6,15 @@ c
+       Character*80 Fname 
+       Dimension Idrop(1000,2)
+       Dimension Ndrop(2)
+-      Logical Hf,Ks,Bk,No,Lo,Fo,pCCD,pCCDS,pCCSTD
++      Logical Hf,Ks,Bk,No,Lo,Fo,pCCD,pCCDS,pCCSTD,pCCDTS,pCCDTSD
+       Logical pCCDQF,CCDQF
+       Logical Xpccd 
+-      LOgical Act_amps_exsit  
++      LOgical Act_amps_exist
+       Logical Geom_opt,Analytical_gradient,Numerical_gradient
+       Logical Vib_specs 
+       Logical Density_mats,props
+       Logical Ee,Ip,Ea
+-      Logical Oo,Drop
++      Logical Oo
+       Logical Drop_mo
+       
+ #include "flags.com"
+diff --git a/runpccd/run_opt.F b/runpccd/run_opt.F
+index d557d95..6d15922 100644
+--- a/runpccd/run_opt.F
++++ b/runpccd/run_opt.F
+@@ -3,6 +3,7 @@
+ 
+       integer icore, is, ius
+       logical Do_derint
++      character*80 szGExtrap
+ 
+       ndrgeo=0
+       szGExtrap = 'xa2proc grad_extrp'
+diff --git a/vee/form_genrlizd_tdens.F b/vee/form_genrlizd_tdens.F
+index 96b6942..2d6eaad 100644
+--- a/vee/form_genrlizd_tdens.F
++++ b/vee/form_genrlizd_tdens.F
+@@ -216,8 +216,11 @@ C
+                   R0       = Z0
+ #ifdef _DEBUG_LVL0
+                    Write(6, "(a,2F12.8)") "The <L|R>;R0: ", Z,R0
+-                  call check_tdens_lists(irrepx,scr,maxcor,461,2,iuhf)
+-                  call check_tdens_lists(irrepy,scr,maxcor,444,0,iuhf)
++C  check_tdens_lists is a _DEBUG_LVL0-only diagnostic that is not defined
++C  anywhere in the tree (undefined symbol at link time); commented out so vee
++C  links. Restore once the routine is provided.
++CSSS              call check_tdens_lists(irrepx,scr,maxcor,461,2,iuhf)
++CSSS              call check_tdens_lists(irrepy,scr,maxcor,444,0,iuhf)
+ #endif 
+                   IF(MBPT2 .OR. LCCD .OR. LCCSD .OR. RCCD .OR. DRCCD 
+      &                    .OR. CC2) R0=0.0d0

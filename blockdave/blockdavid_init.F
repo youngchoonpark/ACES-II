@@ -4,7 +4,7 @@
       Implicit Double Precision(A-H,O-Z)
       integer jj,nroots,totVecs,NUMSOL
       Dimension Work(Maxcor)
-      Logical Converged,DONLS,CISflag
+      Logical Converged,DONLS,CISflag,CISfilterFlag
       integer filterIndx
       logical unconvergedRoots(Nblocks)
       double precision thetaOld(Nblocks),diff(Nblocks)

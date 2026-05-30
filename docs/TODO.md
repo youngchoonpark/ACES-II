@@ -33,8 +33,12 @@ See `docs/gfortran-port-2026-05-30/PORTING-NOTES.md` for the full build procedur
 
 ## Open items (TODO)
 
-- Port the remaining "Category 2" directories that still fail to compile with gfortran 13:
-  `nddo` (82), `blockdave` (43), `pccd` (13), `alice_nwchem` (10), `get_acesinfo` (6),
-  `get_acesmo` (5), `liboo` (5). Fixing `blockdave` and `pccd` also unblocks the link
-  cascade for `vee`, `mopac`, `psi4dbg`, `pccd_drpmo`, `runpccd`.
-- Consider cleaning up the ~20 case-only-differing `.f`/`.F` pairs (see PORTING-NOTES §0).
+- gfortran 13 port status (executables building: 79 / `bin/x*`):
+  - DONE: `nddo`, `blockdave`, `pccd`, `liboo`, `get_acesinfo`, `get_acesmo`, and the
+    cascade (`vee`, `psi4dbg`, `pccd_drpmo`, `runpccd`, `pdens`, `tdee`).
+    See `docs/gfortran-port-2026-05-30/` and `docs/category2-port-2026-05-31/`.
+  - REMAINING: `alice_nwchem` (8 — NWChem interface, optional);
+    `mopac` (1 — undefined `date_` legacy intrinsic, needs a `date_and_time` wrapper).
+- Consider cleaning up the ~20 case-only-differing `.f`/`.F` pairs
+  (see `docs/gfortran-port-2026-05-30/PORTING-NOTES.md` §0).
+- Consider removing the committed Intel-ifort artifact `blockdave/eig__genmod.{f90,mod}`.

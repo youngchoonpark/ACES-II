@@ -6,15 +6,15 @@ c
       Character*80 Fname 
       Dimension Idrop(1000,2)
       Dimension Ndrop(2)
-      Logical Hf,Ks,Bk,No,Lo,Fo,pCCD,pCCDS,pCCSTD
+      Logical Hf,Ks,Bk,No,Lo,Fo,pCCD,pCCDS,pCCSTD,pCCDTS,pCCDTSD
       Logical pCCDQF,CCDQF
       Logical Xpccd 
-      LOgical Act_amps_exsit  
+      LOgical Act_amps_exist
       Logical Geom_opt,Analytical_gradient,Numerical_gradient
       Logical Vib_specs 
       Logical Density_mats,props
       Logical Ee,Ip,Ea
-      Logical Oo,Drop
+      Logical Oo
       Logical Drop_mo
       
 #include "flags.com"

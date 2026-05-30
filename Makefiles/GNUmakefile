@@ -769,9 +769,12 @@ ifeq (${CMPLR},gnu) ############################################################
    C_SUFFIX = 1
    CXX = g++ -c
    CC  = gcc -c
-   FC  = gfortran  -c 
+   FC  = gfortran  -c
    F9XC = gfortran -c
    LD  = gfortran
+ # gfortran searches module/include dirs with -I (not the default -M, which it
+ # rejects as an unknown option when compiling .f90/.f95 sources).
+   MODDIRS_PREFIX = -I
  # make sure the other compilers f9x, cc, and CC all get double alignment
    CFLAGS  = -malign-double
    FFLAGS  = -malign-double -Wall -fno-second-underscore -finit-local-zero
@@ -814,6 +817,12 @@ ifeq (${CMPLR},gnu) ############################################################
        FFLAGS  = -fno-second-underscore -finit-local-zero \
                  -fno-range-check -fdefault-integer-8 \
                  -fallow-argument-mismatch -std=legacy
+     # .f90/.f95 (free-form) sources are compiled with F9XFLAGS, not FFLAGS.
+     # Mirror the same flags so they share 8-byte integers (ABI-consistent with
+     # the .F/.f sources) and tolerate the legacy loose interfaces.
+       F9XFLAGS = -fno-second-underscore -finit-local-zero \
+                  -fno-range-check -fdefault-integer-8 \
+                  -fallow-argument-mismatch -std=legacy
        DEFINES       += -D_USE_SBRK -DF_ADR=integer*8
        FLAG_OPTIMIZE += -O2 -pipe -march=${MARCH}
    endif

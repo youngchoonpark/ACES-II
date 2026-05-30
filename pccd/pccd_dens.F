@@ -2,7 +2,7 @@
 
       Implicit Double Precision(A-H,O-Z)
       Dimension Work(Maxcor)
-      LOGICAL PCCD,CCD,LCCD
+      LOGICAL PCCD,CCD,LCCD,Nonhf_ref
 
 #include "machsp.com"
 #include "sym.com"

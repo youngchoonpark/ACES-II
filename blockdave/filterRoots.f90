@@ -10,7 +10,7 @@ subroutine filterRoots(cVals,cEVECS,Nsize,Nblocks,NUMSOL,&
   double precision::THRESH
   integer::jj,zz,SSPIN,ICOUNT,IIRREP,AIRREP,I,A
 CHARACTER*12 STRINGI(2), STRINGA(2)
-LOGICAL incQM1, FIRST
+LOGICAL incQM1, FIRST, NLS_EXIST, NBO_EXIST
   double precision::SCR(Nsize),tmpEVAL
   double precision::bkupeVecs(NSize,Nblocks),bkupeVals(Nblocks)
   integer::QM1count

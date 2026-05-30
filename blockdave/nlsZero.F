@@ -11,6 +11,7 @@ C      445:    C(ij,ab )       a<b ; i<j     BB BB
 C      446:    C(Ij,Ab )       A,b ; I,j     AB A
 C
       IMPLICIT INTEGER (A-Z)
+      CHARACTER*1 BLANK
       DOUBLE PRECISION SCR(MAXCOR)
       DOUBLE PRECISION VALUE,O_SCALE,V_SCALE
       DOUBLE PRECISION VAL1,VAL2,DIFF,THRES2

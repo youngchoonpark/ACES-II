@@ -2,7 +2,7 @@
       subroutine do_natural_orbs
       implicit integer (a-z)
       integer ndropa,icalc,iabcd,igamma_abcd
-      logical NOS_Exist
+      logical NOS_Exist, geom_opt, vib_specs, analytical_gradient
      
 #include "flags.h"
 #include "flags.com"

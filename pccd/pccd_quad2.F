@@ -42,7 +42,7 @@
      &                           NOCCSQ,DISSYW,DISSYT,NUMSYW,NUMSYT,
      &                           IRREP,ICORE(I003),FACT,IUHF)
               ELSE
-                 CALL INSMEM("PCC_QUAD2",,MAXCOR)
+                 CALL INSMEM("PCC_QUAD2",I004,MAXCOR)
               ENDIF
             ELSE
             ENDIF

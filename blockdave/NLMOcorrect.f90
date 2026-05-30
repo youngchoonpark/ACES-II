@@ -6,7 +6,7 @@ subroutine NLMOcorrect(cVals,cEVECS,Nsize,NUMSOL)
   double precision::THRESH
   integer::zz,SSPIN,ICOUNT,IIRREP,AIRREP,I,A
 CHARACTER*12 STRINGI(2), STRINGA(2)
-LOGICAL incQM1, FIRST
+LOGICAL incQM1, FIRST, NLS_EXIST, NBO_EXIST
   double precision::SCR(Nsize)
   double precision::bkupeVecs(NSize,NUMSOL),bkupeVals(NUMSOL)
   integer::QM1count
