@@ -2,8 +2,8 @@
 
       Implicit Integer(A-Z)
    
-      Double Precision Work(Maxcor) 
-      Logical UHF 
+      Double Precision Work(Maxcor)
+      Logical UHF, Ao_lad
      
 #include "machsp.com"
 #include "sympop.com"

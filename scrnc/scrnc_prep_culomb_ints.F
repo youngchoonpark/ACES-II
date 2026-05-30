@@ -21,7 +21,7 @@
       Ioff_vv = 1
       Ioff_vo = 1
 #ifdef _DEBUG_LVL0
-      Write(6,"(a,a,i5,i)") " Integrals are obtained for pair",
+      Write(6,"(a,a,i5,i5)") " Integrals are obtained for pair",
      +                      " and irrep:",
      +                     Ipq_pair_4irep,Irrepr 
 #endif 

@@ -13,7 +13,7 @@
       LOGICAL CIS,EOM
       LOGICAL BRUECK,BRKCNV
       LOGICAL MICRO_ITER
-      LOGICAL READT
+      LOGICAL READT, INTL1
 C
 #include "flags.h" /* for h_IFLAGS_* and h_IFLAGS2_* */
 #include "machsp.com"

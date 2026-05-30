@@ -75,7 +75,10 @@ C                      2H                6Li              10B
 C                      65Cu              71Ga             81Br 
      &           7.604574401D+07,  8.181119726D+07,  7.249719806D+07/
 C
-      DATA ANAME/ '[1] H ', '[3]HE ', '[7]LI ', '[9]Be ', '[11]B ',
+C ANAME is dimensioned (100) but only 45 isotope labels are provided;
+C initialize the first 45 explicitly (matching the original 45-value DATA).
+      DATA (ANAME(I),I=1,45)/
+     &            '[1] H ', '[3]HE ', '[7]LI ', '[9]Be ', '[11]B ',
      &            '[13]C ', '[15]N ', '[17]O ', '[19]F ', '[21]NE',
      &            '[23]Na', '[25]Mg', '[27]Al', '[29]Si', '[31]P ',
      &            '[33]S ', '[35]Cl', '[39]Ar', '[39]K ', '[43]Ca',

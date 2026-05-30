@@ -249,12 +249,12 @@ ${tl_libs} ${tl_bins} : FORCE
 	    [ ! -f $@/Makefile    ] && [ ! ${hL} $@/Makefile    ] && \
 	    [ ! -f $@/makefile    ] && [ ! ${hL} $@/makefile    ] ; \
 	 then echo "SymLink $@/GNUmakefile -> ${tl_makefile}" ; \
-	      ln -s ${tl_makefile} $@/GNUmakefile ; \
+	      ln -sr ${tl_makefile} $@/GNUmakefile ; \
 	 fi
 	@if [ ! -f $@/GNUmakefile.src ] && [ ! ${hL} $@/GNUmakefile.src ] && \
 	    [ ! -f $@/Makefile.src    ] && [ ! ${hL} $@/Makefile.src    ] ; \
 	 then echo "SymLink $@/GNUmakefile.src -> ${tl_makefile_src}" ; \
-	      ln -s ${tl_makefile_src} $@/GNUmakefile.src ; \
+	      ln -sr ${tl_makefile_src} $@/GNUmakefile.src ; \
 	 fi
 	@test "x${nolib}" = "x1" -a \
 	      $(patsubst %clean, clean, ${tl_goal}) != clean \
@@ -278,7 +278,7 @@ ${tl_trees} : FORCE
 	@if [ ! -f $@/Makefile ] && [ ! ${hL} $@/Makefile ] && \
 	    [ ! -f $@/makefile ] && [ ! ${hL} $@/makefile ] ; \
 	    then echo "SymLink $@/makefile -> ${tl_makefile_tl}" ; \
-	         ln -s ${tl_makefile_tl} $@/makefile ; \
+	         ln -sr ${tl_makefile_tl} $@/makefile ; \
 	 fi
 #	@if [ "${tl_goal}" = "all" ] ; \
 #	 then cd $@ && $(MAKE) TREES=1 tl_makefile_root=${tl_makefile_root} ; \

@@ -10,7 +10,7 @@
       Character*8 Label(3),Work_label
       Double Precision Mu_0, Mu_tilde_0, Mu_0_dot
 
-      Logical MU, MU_tilde, MU_dot, MU_tilde_dot
+      Logical MU, MU_tilde, MU_dot, MU_tilde_dot, Sing
 
 #include "machsp.com"
 #include "syminf.com"
@@ -122,7 +122,7 @@ C Loop over the 3-components of the diople integrals
          Lenvo2_ab= Irpdpd(Irrepx,11) * Irpdpd(Irrepx,11)
 
 #ifdef _DEBUG_LVL0
-        Write(6,"(a,a)") "Length,Length21,Length22,Lenoo,Lenvv,Lenv0"
+        Write(6,"(a,a)") "Length,Length21,Length22,Lenoo,Lenvv,Lenv0",
      +                   ",Lenvo2_aa,Lenvo2_bb,Lenvo2_ab: "
         Write(6,"(9(1x,I5))")Length,Length21,Length22,Lenoo,Lenvv,
      +                       Lenv0,Lenvo2_aa, Lenvo2_bb, Lenvo2_ab

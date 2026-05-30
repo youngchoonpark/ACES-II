@@ -52,7 +52,10 @@ C  of chemistry and physics, 71'st edition 1990-1991
 C  Update whenever possible.
 
 C                      1H                3He              7Li        
-      DATA GTAB_R/ 2.675202874D+08, -2.037995287D+08,  1.039754808D+08,
+C GTAB_R is dimensioned (100) but only 50 values are provided; initialize
+C the first 50 explicitly (matching the original 50-value DATA).
+      DATA (GTAB_R(I),I=1,50)/
+     &             2.675202874D+08, -2.037995287D+08,  1.039754808D+08,
 C                      9BE               11B              13C
      &          -3.759981028D+07,  8.584481142D+07,  6.728214013D+07,
 C                      15N               17O              19F       
@@ -87,7 +90,10 @@ C
      &            0.0           ,  0.0            /
 C                             ----SPECIAL NUCLEI-----
 C                                
-      DATA GTAB_S/ 4.1066287D+07,  2.853498382D+07, -4.470122142D+07,
+C GTAB_S is dimensioned (100) but only 63 values are provided; initialize
+C the first 63 explicitly (matching the original 63-value DATA).
+      DATA (GTAB_S(I),I=1,63)/
+     &             4.1066287D+07,  2.853498382D+07, -4.470122142D+07,
 C                     10B             14N                24Na
      &           2.874679354D+07,  1.933779354D+07,  2.023528505D+07,
 C                     26Al            32P                35S
@@ -129,7 +135,10 @@ C                     76Br            77Br               81Br
 C                     82Br            79Kr               81Kr
      &           1.560000000D+07,  5.134254575D+07,  -1.242511502D+07/
 C
-      DATA ANAME_R/ '[1] H ', '[3]He ', '[7]Li ', '[9]Be ', '[11]B ',
+C ANAME_R is dimensioned (100) but only 45 labels are provided; initialize
+C the first 45 explicitly (matching the original 45-value DATA).
+      DATA (ANAME_R(I),I=1,45)/
+     &              '[1] H ', '[3]He ', '[7]Li ', '[9]Be ', '[11]B ',
      &              '[13]C ', '[15]N ', '[17]O ', '[19]F ', '[21]Ne',
      &              '[23]Na', '[25]Mg', '[27]Al', '[29]Si', '[31]P ',
      &              '[33]S ', '[35]Cl', '[39]Ar', '[39]K ', '[43]Ca',
@@ -139,7 +148,10 @@ C
      &              '[83]Kr', '[14]N ', '[37]Cl', '[49]Ti', '[2] H ',
      &              '[6]Li ', '[10]B ', '[65]Cu', '[71]Ga', '[81]Br'/ 
 
-      DATA ANAME_S/ '2 [H] ', '[3] H ', '[7]Be ', '[10]BA', '[14]N ',
+C ANAME_S is dimensioned (100) but only 55 labels are provided; initialize
+C the first 55 explicitly (matching the original 55-value DATA).
+      DATA (ANAME_S(I),I=1,55)/
+     &              '2 [H] ', '[3] H ', '[7]Be ', '[10]BA', '[14]N ',
      &              '[24]Na', '[26]Al', '[32]P ', '[35]S ', '[36]Cl',
      &              '[41]K ', '[43]K ', '[41]Ca', '[45]Ca', '[47]Ca',
      &              '[43]Sc', '[44]Sc', '[45]Ti', '[49]Ti', '[48]V ',

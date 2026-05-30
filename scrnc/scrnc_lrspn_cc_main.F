@@ -262,7 +262,7 @@ C linear equations. Simply set the solution vector to zero.
 #ifdef _DEBUG_LVL0
       Write(6,"(1x,a)") "-----Entering Lineqy------"
 #endif 
-                Write(6,"(3a,1x,5I,2I)")" Linear equations are",
+                Write(6,"(3a,1x,I5,I2)")" Linear equations are",
      +                           " solved from right side for" ,
      +                           " perturbation and symmetry:", 
      +                             Iao_pair,Irrepx 

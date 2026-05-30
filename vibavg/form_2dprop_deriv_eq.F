@@ -15,7 +15,7 @@
 #ifdef _DEBUG_LVL0
       Write(6,"(2a)") "In Form_2dprop_deriv_eq property matrices."
       Write(6,"(2a)") "Calculating 2nd derivative using equilibrium"
-     +                " and plu/minus dispalced values"
+     +              , " and plu/minus dispalced values"
       Write(6,"(a)") "Plus"
       call output(plus(1,1,1),1,Ndim,1,Ndim,Ndim,Ndim,1)
       Write(6,"(a)") "Minus"

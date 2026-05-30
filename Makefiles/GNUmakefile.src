@@ -1,27 +1,34 @@
-#-D_NONO_SKIP will do the original transformation
-#-D_READ_ONLY do the new transformation but built on old structure
-#-D_2HOT is new transformation on the new structure.
+# Local build configuration for this checkout.
 #
-#DEFINES_EXTRA += -D_READ_ONLY -D_DEBUG_LVL0# -D_DEBUG_LVLM1 -D_ASSERT
-#DEFINES_EXTRA += -D_DEBUG_LVLM1 -D_DEBUG_LVL0 -D_NONOSKIP   -D_ASSERT
-#DEFINES_EXTRA += -D_2HOT -D_ASSERT #-D_DEBUG_LVL0 #-D_DEBUG_LVLM1 -D_DEBUG_LVL0  -D_DEBUG_LVLM2
+# ARCH/OPSYS/CMPLR are auto-detected by GNUmakefile when the host is not in
+# the MACHSTATS table (here: gnu / X86_64 / linux). The original developer
+# (QTP) configuration is preserved in GNUmakefile.src.example for reference.
+#
+# This file is per-checkout: keep machine/user-specific absolute paths OUT of
+# it so the tree stays portable. Override anything here or on the command line.
 
-#DEFINES_EXTRA +=  -D_ASSERT -D_DOUG_KROLL -D_DPOCC -D_DEBUG_LVL0 #-D_RCC #-D_OLDECP #-D_DEBUG_LVLM1 # -D_DOUG_KROLL #-D_DEBUG -D_IMPORT_CORR_ORBS -D_DEBUG_LVL0# -D_2ND_ORD_PROPS  -D_DEBUG 
-DEFINES_EXTRA = -D_ASSERT -D_DOUG_KROLL -D_TDENS -D_MKLST -D_GETPTS -D_DPOCC -D_RCC -D_DEBUG_LVL0  #-D_NO_NRML_ORD #-D_HF_ONLY #-D_SAVE_GAMMA -D_TAILORED #-D_USE_CFOUR #-D_SCALE_IJAB
- 
-OPTIMIZE=1
-DEBUG=0
-64BIT=1
-INCDIRS= ../include ../include/mpi ./include  ../intgrt/include/ ../sbtools/include
-MKL_GRP:= -Bstatic -lmkl_intel_ilp64 -lmkl_lapack95_ilp64 -lmkl_sequential -lmkl_core -Bdynamic
+# Functional feature defines for the intended ACES II build.
+# (-D_DEBUG_LVL0 enables verbose debug printing; remove for quiet runs.)
+DEFINES_EXTRA = -D_ASSERT -D_DOUG_KROLL -D_TDENS -D_MKLST -D_GETPTS \
+                -D_DPOCC -D_RCC -D_DEBUG_LVL0
 
-#LDFLAGS_NUMLIBS:= -L/apps/compilers/intel/2020/0.166/mkl/lib/intel64  -Wl,--start-group $(MKL_GRP) -Wl,--end-group -pthread -L//apps/shared/bartlett/ACESII-2.14.0/lib -llb -llinpack
+OPTIMIZE = 1
+DEBUG    = 0
+64BIT    = 1
 
-LDFLAGS_NUMLIBS:= -L/apps/shared/bartlett/ACESII-2.14.0/lib -llinpack -llb
+# MARCH selects the CPU target (default: native to the build host).
+# Set MARCH = x86-64 for portable binaries.
+# MARCH = native
 
-DIR_INSTBIN := /home/perera/Develop/ACESII/bin
-DIR_INSTLIB := /home/perera/Develop/ACESII/lib
-DIR_SRCLIB  := ${DIR_INSTLIB}
+INCDIRS = ../include ../include/mpi ./include \
+          ../intgrt/include/ ../sbtools/include
+
+# Link against the numerical libraries ACES builds into ./lib and ../lib
+# (resolved via the default -L./lib -L../lib search path -- no absolute paths).
+LDFLAGS_NUMLIBS := -llinpack -leispack -llb
+
+# Install targets within this checkout. DIR_INSTBIN/DIR_INSTLIB default to
+# ../bin and ../lib (relative -> portable), so they are intentionally unset.
 
 ###################################
 ## AME and ASL specific settings ##
@@ -35,4 +42,3 @@ ifeq (${CURR},asv)
    LDFLAGS_EXTRA := ../joda/asv_ctl.o
    LDFLAGS_NUMLIBS :=
 endif
-

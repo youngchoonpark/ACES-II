@@ -3,6 +3,10 @@
 
       Implicit Double Precision(A-H,O-Z)
 
+C Dmaxcor is a work-array size; the implicit D-rule would make it REAL, so
+C declare it INTEGER explicitly (like Imaxcor, which is implicitly integer).
+      Integer Dmaxcor
+
       Dimension Dwork(Dmaxcor)
       Dimension Iwork(Imaxcor) 
       Character*1 Kka(8,3)

@@ -93,10 +93,13 @@ C
       COMMON /AOSOTR/ CTRAN(MXCORB,8), ITRAN(MXCORB,8), IAOAO(MXCORB)
       CHARACTER*1 CHRSGN(-1:1)
       DATA CHRSGN /'-',' ','+'/
-      DATA ISPD /'s','p','d','f','g','h','i'/, IBLANK/' '/
+      DATA ISPD /'s','p','d','f','g','h','i','k'/, IBLANK/' '/
       DATA KO   / 'X', 'Y', 'Z'/
       DATA KOKO /'YZ','XZ','XY'/
-      DATA KWO /'s   ','x   ','y   ','z   ',
+C KWO is dimensioned for MXQN=8 (through L=7), but only L<=6 (i) Cartesian
+C labels exist (84 values). Initialize the first 84 explicitly; the remaining
+C k-function (L=7) slots are unlabeled (matching the original 84-value DATA).
+      DATA (KWO(I),I=1,84) /'s   ','x   ','y   ','z   ',
      *          'xx  ','xy  ','xz  ','yy  ','yz  ','zz  ',
      *          'xxx ','xxy ','xxz ','xyy ','xyz ','xzz ',
      *          'yyy ','yyz ','yzz ','zzz ',

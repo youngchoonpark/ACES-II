@@ -1,0 +1,522 @@
+diff --git a/Makefiles/GNUmakefile b/Makefiles/GNUmakefile
+index fefbaab..6c28a4e 100644
+--- a/Makefiles/GNUmakefile
++++ b/Makefiles/GNUmakefile
+@@ -229,9 +229,50 @@ CMPLR := $(word  4, ${list})
+ list  :=
+ MACHSTATS :=
+ 
+-# bomb if the compiler is not defined
++# If this host is not in the MACHSTATS table, auto-detect the build
++# environment from the system instead of bombing. This lets the code build on
++# a new machine without editing the table above or passing MACHNAME on the
++# command line. Any auto-detected value can still be overridden in
++# GNUmakefile.src or on the command line (e.g., `gmake CMPLR=intel`).
+ ifeq (${CMPLR},undefined)
+-$(error The compiler is undefined)
++   # operating system from `uname -s`
++   tmp := $(shell uname -s)
++   ifeq (${tmp},Linux)
++      OPSYS := linux
++   else
++   ifeq (${tmp},Darwin)
++      OPSYS := linux
++   else
++   ifeq (${tmp},AIX)
++      OPSYS := aix
++   else
++      OPSYS := linux
++   endif
++   endif
++   endif
++   # compiler from the first available Fortran compiler
++   ifneq (,$(shell command -v gfortran 2>/dev/null))
++      CMPLR := gnu
++   else
++   ifneq (,$(shell command -v ifort 2>/dev/null))
++      CMPLR := intel
++   else
++   ifneq (,$(shell command -v pgf90 2>/dev/null))
++      CMPLR := pg
++   else
++      CMPLR := gnu
++   endif
++   endif
++   endif
++   # architecture from `uname -m` (x86_64/amd64 -> X86_64 to reuse that branch)
++   tmp := $(shell uname -m)
++   ifneq (,$(filter ${tmp},x86_64 amd64))
++      ARCH := X86_64
++   else
++      ARCH := ${tmp}
++   endif
++   tmp :=
++   $(info @GNUmakefile: '${MACHNAME}' not in MACHSTATS; auto-detected ARCH=${ARCH} OPSYS=${OPSYS} CMPLR=${CMPLR})
+ endif
+ 
+ #
+@@ -762,12 +803,19 @@ ifeq (${CMPLR},gnu) ############################################################
+       FLAG_OPTIMIZE := -O2 -funroll-loops -pipe -march=i686
+    endif
+    ifeq (${ARCH},X86_64)
++     # MARCH selects the CPU target; default to the build host. Override in
++     # GNUmakefile.src or the command line (e.g., `gmake MARCH=x86-64`) for
++     # portable binaries or when cross-compiling.
++       MARCH ?= native
+        CPP = cpp -traditional-cpp
+        CPPFLAGS = -P #-C
++     # gfortran 10+ treats actual-argument rank/type mismatches as errors;
++     # legacy ACES code relies on loose interfaces, so downgrade to warnings.
+        FFLAGS  = -fno-second-underscore -finit-local-zero \
+-                 -fno-range-check -fdefault-integer-8
++                 -fno-range-check -fdefault-integer-8 \
++                 -fallow-argument-mismatch -std=legacy
+        DEFINES       += -D_USE_SBRK -DF_ADR=integer*8
+-       FLAG_OPTIMIZE += -O2 -pipe -march=amdfam10
++       FLAG_OPTIMIZE += -O2 -pipe -march=${MARCH}
+    endif
+ endif
+ 
+@@ -984,7 +1032,7 @@ ACES_LINK_LISTS = \
+    hcmult:vee:libr2:${LIST_DEF_LIBS}\
+    libint:oed:erd:${LIST_DEF_LIBS}\
+    lsccresp:sbtools:vcc:libr2:${LIST_DEF_LIBS}\
+-   vibavg:a2proc:sbtools:ibr2:${LIST_DEF_LIBS}\
++   vibavg:a2proc:sbtools:libr2:${LIST_DEF_LIBS}\
+    eompccd:vee:vea:trp:librt3:libr2:crust:hbar:vcc:blockdave:pccd:${LIST_DEF_LIBS}\
+    ccsdtqf_mm:vcc:trp:librt3:libr2:pccd:${LIST_DEF_LIBS} \
+    runpccd:aces2:${LIST_DEF_LIBS}
+@@ -1630,7 +1678,7 @@ ifdef buildmod
+ 
+    DIR_INSTINC := ${dir_testinc} ${DIR_INSTINC} ../../include
+    dirs        := ${DIR_INSTINC}
+-   tmp         := $(forearch dir, ${dirs}, $(dir_writeable))
++   tmp         := $(foreach dir, ${dirs}, $(dir_writeable))
+    dir_instinc := $(word 1, ${tmp})
+    dir_instinc := $(strip ${dir_instinc})
+ 
+diff --git a/Makefiles/GNUmakefile.src b/Makefiles/GNUmakefile.src
+index 3de1edd..82805cd 100644
+--- a/Makefiles/GNUmakefile.src
++++ b/Makefiles/GNUmakefile.src
+@@ -1,27 +1,34 @@
+-#-D_NONO_SKIP will do the original transformation
+-#-D_READ_ONLY do the new transformation but built on old structure
+-#-D_2HOT is new transformation on the new structure.
++# Local build configuration for this checkout.
+ #
+-#DEFINES_EXTRA += -D_READ_ONLY -D_DEBUG_LVL0# -D_DEBUG_LVLM1 -D_ASSERT
+-#DEFINES_EXTRA += -D_DEBUG_LVLM1 -D_DEBUG_LVL0 -D_NONOSKIP   -D_ASSERT
+-#DEFINES_EXTRA += -D_2HOT -D_ASSERT #-D_DEBUG_LVL0 #-D_DEBUG_LVLM1 -D_DEBUG_LVL0  -D_DEBUG_LVLM2
++# ARCH/OPSYS/CMPLR are auto-detected by GNUmakefile when the host is not in
++# the MACHSTATS table (here: gnu / X86_64 / linux). The original developer
++# (QTP) configuration is preserved in GNUmakefile.src.example for reference.
++#
++# This file is per-checkout: keep machine/user-specific absolute paths OUT of
++# it so the tree stays portable. Override anything here or on the command line.
++
++# Functional feature defines for the intended ACES II build.
++# (-D_DEBUG_LVL0 enables verbose debug printing; remove for quiet runs.)
++DEFINES_EXTRA = -D_ASSERT -D_DOUG_KROLL -D_TDENS -D_MKLST -D_GETPTS \
++                -D_DPOCC -D_RCC -D_DEBUG_LVL0
+ 
+-#DEFINES_EXTRA +=  -D_ASSERT -D_DOUG_KROLL -D_DPOCC -D_DEBUG_LVL0 #-D_RCC #-D_OLDECP #-D_DEBUG_LVLM1 # -D_DOUG_KROLL #-D_DEBUG -D_IMPORT_CORR_ORBS -D_DEBUG_LVL0# -D_2ND_ORD_PROPS  -D_DEBUG 
+-DEFINES_EXTRA = -D_ASSERT -D_DOUG_KROLL -D_TDENS -D_MKLST -D_GETPTS -D_DPOCC -D_RCC -D_DEBUG_LVL0  #-D_NO_NRML_ORD #-D_HF_ONLY #-D_SAVE_GAMMA -D_TAILORED #-D_USE_CFOUR #-D_SCALE_IJAB
+- 
+-OPTIMIZE=1
+-DEBUG=0
+-64BIT=1
+-INCDIRS= ../include ../include/mpi ./include  ../intgrt/include/ ../sbtools/include
+-MKL_GRP:= -Bstatic -lmkl_intel_ilp64 -lmkl_lapack95_ilp64 -lmkl_sequential -lmkl_core -Bdynamic
++OPTIMIZE = 1
++DEBUG    = 0
++64BIT    = 1
+ 
+-#LDFLAGS_NUMLIBS:= -L/apps/compilers/intel/2020/0.166/mkl/lib/intel64  -Wl,--start-group $(MKL_GRP) -Wl,--end-group -pthread -L//apps/shared/bartlett/ACESII-2.14.0/lib -llb -llinpack
++# MARCH selects the CPU target (default: native to the build host).
++# Set MARCH = x86-64 for portable binaries.
++# MARCH = native
+ 
+-LDFLAGS_NUMLIBS:= -L/apps/shared/bartlett/ACESII-2.14.0/lib -llinpack -llb
++INCDIRS = ../include ../include/mpi ./include \
++          ../intgrt/include/ ../sbtools/include
+ 
+-DIR_INSTBIN := /home/perera/Develop/ACESII/bin
+-DIR_INSTLIB := /home/perera/Develop/ACESII/lib
+-DIR_SRCLIB  := ${DIR_INSTLIB}
++# Link against the numerical libraries ACES builds into ./lib and ../lib
++# (resolved via the default -L./lib -L../lib search path -- no absolute paths).
++LDFLAGS_NUMLIBS := -llinpack -leispack -llb
++
++# Install targets within this checkout. DIR_INSTBIN/DIR_INSTLIB default to
++# ../bin and ../lib (relative -> portable), so they are intentionally unset.
+ 
+ ###################################
+ ## AME and ASL specific settings ##
+@@ -35,4 +42,3 @@ ifeq (${CURR},asv)
+    LDFLAGS_EXTRA := ../joda/asv_ctl.o
+    LDFLAGS_NUMLIBS :=
+ endif
+-
+diff --git a/Makefiles/GNUmakefile.src.example b/Makefiles/GNUmakefile.src.example
+new file mode 100755
+index 0000000..3de1edd
+--- /dev/null
++++ b/Makefiles/GNUmakefile.src.example
+@@ -0,0 +1,38 @@
++#-D_NONO_SKIP will do the original transformation
++#-D_READ_ONLY do the new transformation but built on old structure
++#-D_2HOT is new transformation on the new structure.
++#
++#DEFINES_EXTRA += -D_READ_ONLY -D_DEBUG_LVL0# -D_DEBUG_LVLM1 -D_ASSERT
++#DEFINES_EXTRA += -D_DEBUG_LVLM1 -D_DEBUG_LVL0 -D_NONOSKIP   -D_ASSERT
++#DEFINES_EXTRA += -D_2HOT -D_ASSERT #-D_DEBUG_LVL0 #-D_DEBUG_LVLM1 -D_DEBUG_LVL0  -D_DEBUG_LVLM2
++
++#DEFINES_EXTRA +=  -D_ASSERT -D_DOUG_KROLL -D_DPOCC -D_DEBUG_LVL0 #-D_RCC #-D_OLDECP #-D_DEBUG_LVLM1 # -D_DOUG_KROLL #-D_DEBUG -D_IMPORT_CORR_ORBS -D_DEBUG_LVL0# -D_2ND_ORD_PROPS  -D_DEBUG 
++DEFINES_EXTRA = -D_ASSERT -D_DOUG_KROLL -D_TDENS -D_MKLST -D_GETPTS -D_DPOCC -D_RCC -D_DEBUG_LVL0  #-D_NO_NRML_ORD #-D_HF_ONLY #-D_SAVE_GAMMA -D_TAILORED #-D_USE_CFOUR #-D_SCALE_IJAB
++ 
++OPTIMIZE=1
++DEBUG=0
++64BIT=1
++INCDIRS= ../include ../include/mpi ./include  ../intgrt/include/ ../sbtools/include
++MKL_GRP:= -Bstatic -lmkl_intel_ilp64 -lmkl_lapack95_ilp64 -lmkl_sequential -lmkl_core -Bdynamic
++
++#LDFLAGS_NUMLIBS:= -L/apps/compilers/intel/2020/0.166/mkl/lib/intel64  -Wl,--start-group $(MKL_GRP) -Wl,--end-group -pthread -L//apps/shared/bartlett/ACESII-2.14.0/lib -llb -llinpack
++
++LDFLAGS_NUMLIBS:= -L/apps/shared/bartlett/ACESII-2.14.0/lib -llinpack -llb
++
++DIR_INSTBIN := /home/perera/Develop/ACESII/bin
++DIR_INSTLIB := /home/perera/Develop/ACESII/lib
++DIR_SRCLIB  := ${DIR_INSTLIB}
++
++###################################
++## AME and ASL specific settings ##
++###################################
++
++ifeq (${CURR},asv)
++   LIST_DEF_LIBS :=
++   ACES_LINK_LISTS :=
++   LD := $(filter-out -c,${CC})
++   LDFLAGS := ${CFLAGS}
++   LDFLAGS_EXTRA := ../joda/asv_ctl.o
++   LDFLAGS_NUMLIBS :=
++endif
++
+diff --git a/Makefiles/GNUmakefile.tl b/Makefiles/GNUmakefile.tl
+index 9af77d5..78185d1 100644
+--- a/Makefiles/GNUmakefile.tl
++++ b/Makefiles/GNUmakefile.tl
+@@ -248,12 +248,12 @@ ${tl_libs} ${tl_bins} : FORCE
+ 	    [ ! -f $@/Makefile    ] && [ ! ${hL} $@/Makefile    ] && \
+ 	    [ ! -f $@/makefile    ] && [ ! ${hL} $@/makefile    ] ; \
+ 	 then echo "SymLink $@/GNUmakefile -> ${tl_makefile}" ; \
+-	      ln -s ${tl_makefile} $@/GNUmakefile ; \
++	      ln -sr ${tl_makefile} $@/GNUmakefile ; \
+ 	 fi
+ 	@if [ ! -f $@/GNUmakefile.src ] && [ ! ${hL} $@/GNUmakefile.src ] && \
+ 	    [ ! -f $@/Makefile.src    ] && [ ! ${hL} $@/Makefile.src    ] ; \
+ 	 then echo "SymLink $@/GNUmakefile.src -> ${tl_makefile_src}" ; \
+-	      ln -s ${tl_makefile_src} $@/GNUmakefile.src ; \
++	      ln -sr ${tl_makefile_src} $@/GNUmakefile.src ; \
+ 	 fi
+ 	@test "x${nolib}" = "x1" -a \
+ 	      $(patsubst %clean, clean, ${tl_goal}) != clean \
+@@ -277,7 +277,7 @@ ${tl_trees} : FORCE
+ 	@if [ ! -f $@/Makefile ] && [ ! ${hL} $@/Makefile ] && \
+ 	    [ ! -f $@/makefile ] && [ ! ${hL} $@/makefile ] ; \
+ 	    then echo "SymLink $@/makefile -> ${tl_makefile_tl}" ; \
+-	         ln -s ${tl_makefile_tl} $@/makefile ; \
++	         ln -sr ${tl_makefile_tl} $@/makefile ; \
+ 	 fi
+ #	@if [ "${tl_goal}" = "all" ] ; \
+ #	 then cd $@ && $(MAKE) TREES=1 tl_makefile_root=${tl_makefile_root} ; \
+diff --git a/aux/job_control.F b/aux/job_control.F
+index 3648a76..1ab4066 100644
+--- a/aux/job_control.F
++++ b/aux/job_control.F
+@@ -1,7 +1,7 @@
+ #include "flags.h" 
+       Subroutine Job_control(Occnums_file) 
+       Logical Ca,Fc,Bca,Bfc,Occnums_file,Move
+-      Logical Nwo
++      Logical Nwo, Fcr
+       Logical Scf, Pscf
+       Character*80 Fname 
+       
+diff --git a/libint/built_symtran.F b/libint/built_symtran.F
+index 125ca04..3ee9066 100644
+--- a/libint/built_symtran.F
++++ b/libint/built_symtran.F
+@@ -3,6 +3,10 @@
+ 
+       Implicit Double Precision(A-H,O-Z)
+ 
++C Dmaxcor is a work-array size; the implicit D-rule would make it REAL, so
++C declare it INTEGER explicitly (like Imaxcor, which is implicitly integer).
++      Integer Dmaxcor
++
+       Dimension Dwork(Dmaxcor)
+       Dimension Iwork(Imaxcor) 
+       Character*1 Kka(8,3)
+diff --git a/makefile b/makefile
+index 9ab4ce3..d3df1cb 100644
+--- a/makefile
++++ b/makefile
+@@ -249,12 +249,12 @@ ${tl_libs} ${tl_bins} : FORCE
+ 	    [ ! -f $@/Makefile    ] && [ ! ${hL} $@/Makefile    ] && \
+ 	    [ ! -f $@/makefile    ] && [ ! ${hL} $@/makefile    ] ; \
+ 	 then echo "SymLink $@/GNUmakefile -> ${tl_makefile}" ; \
+-	      ln -s ${tl_makefile} $@/GNUmakefile ; \
++	      ln -sr ${tl_makefile} $@/GNUmakefile ; \
+ 	 fi
+ 	@if [ ! -f $@/GNUmakefile.src ] && [ ! ${hL} $@/GNUmakefile.src ] && \
+ 	    [ ! -f $@/Makefile.src    ] && [ ! ${hL} $@/Makefile.src    ] ; \
+ 	 then echo "SymLink $@/GNUmakefile.src -> ${tl_makefile_src}" ; \
+-	      ln -s ${tl_makefile_src} $@/GNUmakefile.src ; \
++	      ln -sr ${tl_makefile_src} $@/GNUmakefile.src ; \
+ 	 fi
+ 	@test "x${nolib}" = "x1" -a \
+ 	      $(patsubst %clean, clean, ${tl_goal}) != clean \
+@@ -278,7 +278,7 @@ ${tl_trees} : FORCE
+ 	@if [ ! -f $@/Makefile ] && [ ! ${hL} $@/Makefile ] && \
+ 	    [ ! -f $@/makefile ] && [ ! ${hL} $@/makefile ] ; \
+ 	    then echo "SymLink $@/makefile -> ${tl_makefile_tl}" ; \
+-	         ln -s ${tl_makefile_tl} $@/makefile ; \
++	         ln -sr ${tl_makefile_tl} $@/makefile ; \
+ 	 fi
+ #	@if [ "${tl_goal}" = "all" ] ; \
+ #	 then cd $@ && $(MAKE) TREES=1 tl_makefile_root=${tl_makefile_root} ; \
+diff --git a/oprots/oprots_driver.F b/oprots/oprots_driver.F
+index a64d0eb..d40e1f8 100644
+--- a/oprots/oprots_driver.F
++++ b/oprots/oprots_driver.F
+@@ -68,8 +68,8 @@ C q' = Sin(eps) p  - Cos (eps) q
+ 
+       If (Type .EQ. "OV") Then
+       If (Abs(Ip1) .Gt. Nocco(1) .OR. Ip2 .Gt. Nvrto(1)) Then 
+-      write(6,"(2a,i4,a,I4,2a,2i4)") " The selected occupied or virtual",
+-     +      " orbital", Abs(Ip1)," or",Ip2," exceeded the number of"
++      write(6,"(2a,i4,a,I4,2a,2i4)") " The selected occupied or virtual"
++     +      ," orbital", Abs(Ip1)," or",Ip2," exceeded the number of"
+       write(6,"(a,2(1x,i4))") " occupied or virtuals:", Nocco(1),
+      +                          Nvrto(1)
+       Call Errex
+@@ -94,13 +94,13 @@ C q' = Sin(eps) p  - Cos (eps) q
+       If (Type .EQ. "VO") Then
+       If (Ip1 .Gt. Nvrto(1) .OR. Abs(Ip2) .Gt. Nocco(1)) Then 
+       write(6,"(2a,i4,a,I4,2a,2i4)") " The selected virtual or occupied"
+-     +      " orbitals", Ip1," or",Abs(Ip2)," exceeded the number of",
++     +      ," orbitals", Ip1," or",Abs(Ip2)," exceeded the number of",
+      +      " virtuals or occupied:", Nvrto(1),Nocco(1)
+          Call Errex
+       Endif 
+       If (Ip3 .Gt. Nvrto(1) .OR. Abs(Ip4) .Gt. Nocco(1)) Then 
+       write(6,"(2a,i4,a,I4,2a,2i4)") " The selected virtual or occupied"
+-     +      " orbitals", Ip3," or",Abs(Ip4)," exceeded the number of",
++     +      ," orbitals", Ip3," or",Abs(Ip4)," exceeded the number of",
+      +      " virtuals or occupied:", Nvrto(1),Nocco(1)
+          Call Errex
+       Endif 
+diff --git a/psi4dbg/psi4dbg_rdriver.F b/psi4dbg/psi4dbg_rdriver.F
+index 8437217..5d317a2 100644
+--- a/psi4dbg/psi4dbg_rdriver.F
++++ b/psi4dbg/psi4dbg_rdriver.F
+@@ -13,7 +13,7 @@
+       LOGICAL CIS,EOM
+       LOGICAL BRUECK,BRKCNV
+       LOGICAL MICRO_ITER
+-      LOGICAL READT
++      LOGICAL READT, INTL1
+ C
+ #include "flags.h" /* for h_IFLAGS_* and h_IFLAGS2_* */
+ #include "machsp.com"
+diff --git a/scrnc/scrnc_form_rcc_hbar.F b/scrnc/scrnc_form_rcc_hbar.F
+index b7fd4af..ab27c3c 100644
+--- a/scrnc/scrnc_form_rcc_hbar.F
++++ b/scrnc/scrnc_form_rcc_hbar.F
+@@ -13,7 +13,7 @@ CEND
+       LOGICAL CIS,RPA,EOMCC,CISD,FULDIAG,INCORE,READGUES
+       LOGICAL MBPT2,CC,CCD,RCCD,DRCCD,LCCD,LCCSD,CC2
+       LOGICAL NONHF 
+-      LOGICAL HEFF,TDA,EOM_SFRCCD,EOM_SFDRCC
++      LOGICAL HEFF,TDA,EOM_SFRCCD,EOM_SFDRCCD
+       DOUBLE PRECISION ONE,ONEM,TWO,HALF
+       DIMENSION ICORE(MAXCOR),IOFFO(2),IOFFV(2)
+ C
+diff --git a/scrnc/scrnc_lrspn_cc_main.F b/scrnc/scrnc_lrspn_cc_main.F
+index 0c0a5a7..16d15f3 100644
+--- a/scrnc/scrnc_lrspn_cc_main.F
++++ b/scrnc/scrnc_lrspn_cc_main.F
+@@ -262,7 +262,7 @@ C linear equations. Simply set the solution vector to zero.
+ #ifdef _DEBUG_LVL0
+       Write(6,"(1x,a)") "-----Entering Lineqy------"
+ #endif 
+-                Write(6,"(3a,1x,5I,2I)")" Linear equations are",
++                Write(6,"(3a,1x,I5,I2)")" Linear equations are",
+      +                           " solved from right side for" ,
+      +                           " perturbation and symmetry:", 
+      +                             Iao_pair,Irrepx 
+diff --git a/scrnc/scrnc_prep_culomb_ints.F b/scrnc/scrnc_prep_culomb_ints.F
+index 0c9c289..9c535e2 100644
+--- a/scrnc/scrnc_prep_culomb_ints.F
++++ b/scrnc/scrnc_prep_culomb_ints.F
+@@ -21,7 +21,7 @@
+       Ioff_vv = 1
+       Ioff_vo = 1
+ #ifdef _DEBUG_LVL0
+-      Write(6,"(a,a,i5,i)") " Integrals are obtained for pair",
++      Write(6,"(a,a,i5,i5)") " Integrals are obtained for pair",
+      +                      " and irrep:",
+      +                     Ipq_pair_4irep,Irrepr 
+ #endif 
+diff --git a/tdcc2/tdcc_driver.F b/tdcc2/tdcc_driver.F
+index 11c8575..72a9fea 100644
+--- a/tdcc2/tdcc_driver.F
++++ b/tdcc2/tdcc_driver.F
+@@ -10,7 +10,7 @@
+       Character*8 Label(3),Work_label
+       Double Precision Mu_0, Mu_tilde_0, Mu_0_dot
+ 
+-      Logical MU, MU_tilde, MU_dot, MU_tilde_dot
++      Logical MU, MU_tilde, MU_dot, MU_tilde_dot, Sing
+ 
+ #include "machsp.com"
+ #include "syminf.com"
+@@ -122,7 +122,7 @@ C Loop over the 3-components of the diople integrals
+          Lenvo2_ab= Irpdpd(Irrepx,11) * Irpdpd(Irrepx,11)
+ 
+ #ifdef _DEBUG_LVL0
+-        Write(6,"(a,a)") "Length,Length21,Length22,Lenoo,Lenvv,Lenv0"
++        Write(6,"(a,a)") "Length,Length21,Length22,Lenoo,Lenvv,Lenv0",
+      +                   ",Lenvo2_aa,Lenvo2_bb,Lenvo2_ab: "
+         Write(6,"(9(1x,I5))")Length,Length21,Length22,Lenoo,Lenvv,
+      +                       Lenv0,Lenvo2_aa, Lenvo2_bb, Lenvo2_ab
+diff --git a/vcc/checkintms.F b/vcc/checkintms.F
+index 2907abd..714496d 100644
+--- a/vcc/checkintms.F
++++ b/vcc/checkintms.F
+@@ -2,8 +2,8 @@
+ 
+       Implicit Integer(A-Z)
+    
+-      Double Precision Work(Maxcor) 
+-      Logical UHF 
++      Double Precision Work(Maxcor)
++      Logical UHF, Ao_lad
+      
+ #include "machsp.com"
+ #include "sympop.com"
+diff --git a/vcceh/factor.F b/vcceh/factor.F
+index 07af7e3..4eb8f4d 100644
+--- a/vcceh/factor.F
++++ b/vcceh/factor.F
+@@ -75,7 +75,10 @@ C                      2H                6Li              10B
+ C                      65Cu              71Ga             81Br 
+      &           7.604574401D+07,  8.181119726D+07,  7.249719806D+07/
+ C
+-      DATA ANAME/ '[1] H ', '[3]HE ', '[7]LI ', '[9]Be ', '[11]B ',
++C ANAME is dimensioned (100) but only 45 isotope labels are provided;
++C initialize the first 45 explicitly (matching the original 45-value DATA).
++      DATA (ANAME(I),I=1,45)/
++     &            '[1] H ', '[3]HE ', '[7]LI ', '[9]Be ', '[11]B ',
+      &            '[13]C ', '[15]N ', '[17]O ', '[19]F ', '[21]NE',
+      &            '[23]Na', '[25]Mg', '[27]Al', '[29]Si', '[31]P ',
+      &            '[33]S ', '[35]Cl', '[39]Ar', '[39]K ', '[43]Ca',
+diff --git a/vcceh/factor_is.F b/vcceh/factor_is.F
+index 69fe7ad..f13ef25 100644
+--- a/vcceh/factor_is.F
++++ b/vcceh/factor_is.F
+@@ -52,7 +52,10 @@ C  of chemistry and physics, 71'st edition 1990-1991
+ C  Update whenever possible.
+ 
+ C                      1H                3He              7Li        
+-      DATA GTAB_R/ 2.675202874D+08, -2.037995287D+08,  1.039754808D+08,
++C GTAB_R is dimensioned (100) but only 50 values are provided; initialize
++C the first 50 explicitly (matching the original 50-value DATA).
++      DATA (GTAB_R(I),I=1,50)/
++     &             2.675202874D+08, -2.037995287D+08,  1.039754808D+08,
+ C                      9BE               11B              13C
+      &          -3.759981028D+07,  8.584481142D+07,  6.728214013D+07,
+ C                      15N               17O              19F       
+@@ -87,7 +90,10 @@ C
+      &            0.0           ,  0.0            /
+ C                             ----SPECIAL NUCLEI-----
+ C                                
+-      DATA GTAB_S/ 4.1066287D+07,  2.853498382D+07, -4.470122142D+07,
++C GTAB_S is dimensioned (100) but only 63 values are provided; initialize
++C the first 63 explicitly (matching the original 63-value DATA).
++      DATA (GTAB_S(I),I=1,63)/
++     &             4.1066287D+07,  2.853498382D+07, -4.470122142D+07,
+ C                     10B             14N                24Na
+      &           2.874679354D+07,  1.933779354D+07,  2.023528505D+07,
+ C                     26Al            32P                35S
+@@ -129,7 +135,10 @@ C                     76Br            77Br               81Br
+ C                     82Br            79Kr               81Kr
+      &           1.560000000D+07,  5.134254575D+07,  -1.242511502D+07/
+ C
+-      DATA ANAME_R/ '[1] H ', '[3]He ', '[7]Li ', '[9]Be ', '[11]B ',
++C ANAME_R is dimensioned (100) but only 45 labels are provided; initialize
++C the first 45 explicitly (matching the original 45-value DATA).
++      DATA (ANAME_R(I),I=1,45)/
++     &              '[1] H ', '[3]He ', '[7]Li ', '[9]Be ', '[11]B ',
+      &              '[13]C ', '[15]N ', '[17]O ', '[19]F ', '[21]Ne',
+      &              '[23]Na', '[25]Mg', '[27]Al', '[29]Si', '[31]P ',
+      &              '[33]S ', '[35]Cl', '[39]Ar', '[39]K ', '[43]Ca',
+@@ -139,7 +148,10 @@ C
+      &              '[83]Kr', '[14]N ', '[37]Cl', '[49]Ti', '[2] H ',
+      &              '[6]Li ', '[10]B ', '[65]Cu', '[71]Ga', '[81]Br'/ 
+ 
+-      DATA ANAME_S/ '2 [H] ', '[3] H ', '[7]Be ', '[10]BA', '[14]N ',
++C ANAME_S is dimensioned (100) but only 55 labels are provided; initialize
++C the first 55 explicitly (matching the original 55-value DATA).
++      DATA (ANAME_S(I),I=1,55)/
++     &              '2 [H] ', '[3] H ', '[7]Be ', '[10]BA', '[14]N ',
+      &              '[24]Na', '[26]Al', '[32]P ', '[35]S ', '[36]Cl',
+      &              '[41]K ', '[43]K ', '[41]Ca', '[45]Ca', '[47]Ca',
+      &              '[43]Sc', '[44]Sc', '[45]Ti', '[49]Ti', '[48]V ',
+diff --git a/vdint/readin.F b/vdint/readin.F
+index 47a5b09..1392529 100644
+--- a/vdint/readin.F
++++ b/vdint/readin.F
+@@ -93,10 +93,13 @@ C
+       COMMON /AOSOTR/ CTRAN(MXCORB,8), ITRAN(MXCORB,8), IAOAO(MXCORB)
+       CHARACTER*1 CHRSGN(-1:1)
+       DATA CHRSGN /'-',' ','+'/
+-      DATA ISPD /'s','p','d','f','g','h','i'/, IBLANK/' '/
++      DATA ISPD /'s','p','d','f','g','h','i','k'/, IBLANK/' '/
+       DATA KO   / 'X', 'Y', 'Z'/
+       DATA KOKO /'YZ','XZ','XY'/
+-      DATA KWO /'s   ','x   ','y   ','z   ',
++C KWO is dimensioned for MXQN=8 (through L=7), but only L<=6 (i) Cartesian
++C labels exist (84 values). Initialize the first 84 explicitly; the remaining
++C k-function (L=7) slots are unlabeled (matching the original 84-value DATA).
++      DATA (KWO(I),I=1,84) /'s   ','x   ','y   ','z   ',
+      *          'xx  ','xy  ','xz  ','yy  ','yz  ','zz  ',
+      *          'xxx ','xxy ','xxz ','xyy ','xyz ','xzz ',
+      *          'yyy ','yyz ','yzz ','zzz ',
+diff --git a/vee/form_genrlizd_tdens.F b/vee/form_genrlizd_tdens.F
+index 14855a2..96b6942 100644
+--- a/vee/form_genrlizd_tdens.F
++++ b/vee/form_genrlizd_tdens.F
+@@ -7,7 +7,7 @@
+       DOUBLE PRECISION LNORM(200),RNORM(200)
+       INTEGER T1SIZE
+ 
+-      LOGICAL VPROP,MBPT2,CC,CCD,RCCD,DRCCD,LOGICAL LCCD,LCCSD,CC2
++      LOGICAL VPROP,MBPT2,CC,CCD,RCCD,DRCCD,LCCD,LCCSD,CC2
+       CHARACTER*2 SUFFIX(32)
+       CHARACTER*8 LABEL 
+ 
+diff --git a/vibavg/form_2dprop_deriv_eq.F b/vibavg/form_2dprop_deriv_eq.F
+index a12ca96..14ffa92 100644
+--- a/vibavg/form_2dprop_deriv_eq.F
++++ b/vibavg/form_2dprop_deriv_eq.F
+@@ -15,7 +15,7 @@
+ #ifdef _DEBUG_LVL0
+       Write(6,"(2a)") "In Form_2dprop_deriv_eq property matrices."
+       Write(6,"(2a)") "Calculating 2nd derivative using equilibrium"
+-     +                " and plu/minus dispalced values"
++     +              , " and plu/minus dispalced values"
+       Write(6,"(a)") "Plus"
+       call output(plus(1,1,1),1,Ndim,1,Ndim,Ndim,Ndim,1)
+       Write(6,"(a)") "Minus"

@@ -1,7 +1,7 @@
 #include "flags.h" 
       Subroutine Job_control(Occnums_file) 
       Logical Ca,Fc,Bca,Bfc,Occnums_file,Move
-      Logical Nwo
+      Logical Nwo, Fcr
       Logical Scf, Pscf
       Character*80 Fname 
       

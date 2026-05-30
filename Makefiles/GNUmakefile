@@ -229,9 +229,50 @@ CMPLR := $(word  4, ${list})
 list  :=
 MACHSTATS :=
 
-# bomb if the compiler is not defined
+# If this host is not in the MACHSTATS table, auto-detect the build
+# environment from the system instead of bombing. This lets the code build on
+# a new machine without editing the table above or passing MACHNAME on the
+# command line. Any auto-detected value can still be overridden in
+# GNUmakefile.src or on the command line (e.g., `gmake CMPLR=intel`).
 ifeq (${CMPLR},undefined)
-$(error The compiler is undefined)
+   # operating system from `uname -s`
+   tmp := $(shell uname -s)
+   ifeq (${tmp},Linux)
+      OPSYS := linux
+   else
+   ifeq (${tmp},Darwin)
+      OPSYS := linux
+   else
+   ifeq (${tmp},AIX)
+      OPSYS := aix
+   else
+      OPSYS := linux
+   endif
+   endif
+   endif
+   # compiler from the first available Fortran compiler
+   ifneq (,$(shell command -v gfortran 2>/dev/null))
+      CMPLR := gnu
+   else
+   ifneq (,$(shell command -v ifort 2>/dev/null))
+      CMPLR := intel
+   else
+   ifneq (,$(shell command -v pgf90 2>/dev/null))
+      CMPLR := pg
+   else
+      CMPLR := gnu
+   endif
+   endif
+   endif
+   # architecture from `uname -m` (x86_64/amd64 -> X86_64 to reuse that branch)
+   tmp := $(shell uname -m)
+   ifneq (,$(filter ${tmp},x86_64 amd64))
+      ARCH := X86_64
+   else
+      ARCH := ${tmp}
+   endif
+   tmp :=
+   $(info @GNUmakefile: '${MACHNAME}' not in MACHSTATS; auto-detected ARCH=${ARCH} OPSYS=${OPSYS} CMPLR=${CMPLR})
 endif
 
 #
@@ -762,12 +803,19 @@ ifeq (${CMPLR},gnu) ############################################################
       FLAG_OPTIMIZE := -O2 -funroll-loops -pipe -march=i686
    endif
    ifeq (${ARCH},X86_64)
+     # MARCH selects the CPU target; default to the build host. Override in
+     # GNUmakefile.src or the command line (e.g., `gmake MARCH=x86-64`) for
+     # portable binaries or when cross-compiling.
+       MARCH ?= native
        CPP = cpp -traditional-cpp
        CPPFLAGS = -P #-C
+     # gfortran 10+ treats actual-argument rank/type mismatches as errors;
+     # legacy ACES code relies on loose interfaces, so downgrade to warnings.
        FFLAGS  = -fno-second-underscore -finit-local-zero \
-                 -fno-range-check -fdefault-integer-8
+                 -fno-range-check -fdefault-integer-8 \
+                 -fallow-argument-mismatch -std=legacy
        DEFINES       += -D_USE_SBRK -DF_ADR=integer*8
-       FLAG_OPTIMIZE += -O2 -pipe -march=amdfam10
+       FLAG_OPTIMIZE += -O2 -pipe -march=${MARCH}
    endif
 endif
 
@@ -984,7 +1032,7 @@ ACES_LINK_LISTS = \
    hcmult:vee:libr2:${LIST_DEF_LIBS}\
    libint:oed:erd:${LIST_DEF_LIBS}\
    lsccresp:sbtools:vcc:libr2:${LIST_DEF_LIBS}\
-   vibavg:a2proc:sbtools:ibr2:${LIST_DEF_LIBS}\
+   vibavg:a2proc:sbtools:libr2:${LIST_DEF_LIBS}\
    eompccd:vee:vea:trp:librt3:libr2:crust:hbar:vcc:blockdave:pccd:${LIST_DEF_LIBS}\
    ccsdtqf_mm:vcc:trp:librt3:libr2:pccd:${LIST_DEF_LIBS} \
    runpccd:aces2:${LIST_DEF_LIBS}
@@ -1630,7 +1678,7 @@ ifdef buildmod
 
    DIR_INSTINC := ${dir_testinc} ${DIR_INSTINC} ../../include
    dirs        := ${DIR_INSTINC}
-   tmp         := $(forearch dir, ${dirs}, $(dir_writeable))
+   tmp         := $(foreach dir, ${dirs}, $(dir_writeable))
    dir_instinc := $(word 1, ${tmp})
    dir_instinc := $(strip ${dir_instinc})
 

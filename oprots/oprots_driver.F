@@ -68,8 +68,8 @@ C q' = Sin(eps) p  - Cos (eps) q
 
       If (Type .EQ. "OV") Then
       If (Abs(Ip1) .Gt. Nocco(1) .OR. Ip2 .Gt. Nvrto(1)) Then 
-      write(6,"(2a,i4,a,I4,2a,2i4)") " The selected occupied or virtual",
-     +      " orbital", Abs(Ip1)," or",Ip2," exceeded the number of"
+      write(6,"(2a,i4,a,I4,2a,2i4)") " The selected occupied or virtual"
+     +      ," orbital", Abs(Ip1)," or",Ip2," exceeded the number of"
       write(6,"(a,2(1x,i4))") " occupied or virtuals:", Nocco(1),
      +                          Nvrto(1)
       Call Errex
@@ -94,13 +94,13 @@ C q' = Sin(eps) p  - Cos (eps) q
       If (Type .EQ. "VO") Then
       If (Ip1 .Gt. Nvrto(1) .OR. Abs(Ip2) .Gt. Nocco(1)) Then 
       write(6,"(2a,i4,a,I4,2a,2i4)") " The selected virtual or occupied"
-     +      " orbitals", Ip1," or",Abs(Ip2)," exceeded the number of",
+     +      ," orbitals", Ip1," or",Abs(Ip2)," exceeded the number of",
      +      " virtuals or occupied:", Nvrto(1),Nocco(1)
          Call Errex
       Endif 
       If (Ip3 .Gt. Nvrto(1) .OR. Abs(Ip4) .Gt. Nocco(1)) Then 
       write(6,"(2a,i4,a,I4,2a,2i4)") " The selected virtual or occupied"
-     +      " orbitals", Ip3," or",Abs(Ip4)," exceeded the number of",
+     +      ," orbitals", Ip3," or",Abs(Ip4)," exceeded the number of",
      +      " virtuals or occupied:", Nvrto(1),Nocco(1)
          Call Errex
       Endif 
