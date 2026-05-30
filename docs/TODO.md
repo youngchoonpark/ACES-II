@@ -30,7 +30,8 @@ filesystem (Windows `/mnt/*`, default macOS).
 
 The host is auto-detected by the makefiles, so no `MACHSTATS` entry is needed
 (`gmake` works with no arguments; override with e.g. `gmake CMPLR=intel`).
-See `docs/01-gfortran-port-2026-05-30/PORTING-NOTES.md` for the full build procedure and history.
+**See `docs/BUILD.md` for the step-by-step build guide**, and
+`docs/01-gfortran-port-2026-05-30/PORTING-NOTES.md` for the porting history.
 
 ## Open items (TODO)
 
