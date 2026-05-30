@@ -1,4 +1,4 @@
-program alice_nwchem
+program extiface
    use mod_job
    implicit none
    integer fileinp,fileout
@@ -21,4 +21,4 @@ program alice_nwchem
 
    close (fileinp)
    close (fileout)
-end program alice_nwchem
+end program extiface

@@ -52,16 +52,17 @@ subroutine cart2sph(mat,irow,icol,str)
    character(len=*) str
    integer irow,icol,i,j,ind
    double precision mat(irow,icol) 
-   double precision mat_d(36) 
-!  sph(d0,d-2,d1,d2,d-1,xx) = mat_d * cart(xx,xy,xz,yy,yz,zz)
-   data (mat_d(i),i = 1,36) &
-         !  xx    xy   xz   yy   yz   zz
-         / '-1', '0', '0','-1', '0', '2', &  !d0
-           ' 0', '1', '0',' 0', '0', '0', &  !d-2
-           ' 0', '0', '1',' 0', '0', '0', &  !d+1
-           ' 1', '0', '0','-1', '0', '0', &  !d+2
-           ' 0', '0', '0',' 0', '1', '0', &  !d-1
-           ' 1', '0', '0',' 1', '0', '1' /   !xx
+   double precision mat_d(36)
+!  sph(d0,d-2,d+1,d+2,d-1,xx) = mat_d * cart(xx,xy,xz,yy,yz,zz)
+!  Unnormalized real solid-harmonic convention; stored row-major (6 rows x 6 cols).
+   mat_d = (/ &
+   !    xx    xy    xz    yy    yz    zz
+       -1d0,  0d0,  0d0, -1d0,  0d0,  2d0, &  ! d0   = 2zz - xx - yy
+        0d0,  1d0,  0d0,  0d0,  0d0,  0d0, &  ! d-2  = xy
+        0d0,  0d0,  1d0,  0d0,  0d0,  0d0, &  ! d+1  = xz
+        1d0,  0d0,  0d0, -1d0,  0d0,  0d0, &  ! d+2  = xx - yy
+        0d0,  0d0,  0d0,  0d0,  1d0,  0d0, &  ! d-1  = yz
+        1d0,  0d0,  0d0,  1d0,  0d0,  1d0 /)  ! xx   = xx + yy + zz (r^2)
 
    ind = 0
    do i = 1, irow
@@ -78,16 +79,19 @@ subroutine sph2cart(mat,irow,icol,str)
    character(len=*) str
    integer irow,icol,i,j,ind
    double precision mat(irow,icol) 
-   double precision mat_d(36) 
-   data (mat_d(i),i = 1,36) &
-         !  2      5    1    3      4    6
-         !  d0     d-2  d+1  d+2    d-1  xx
-         / '-1/6', '0', '0',' 1/2', '0', '0', &  !1
-           '   0', '1', '0','   0', '0', '0', &  !2
-           '   0', '0', '1','   0', '0', '0', &  !3
-           '-1/6', '0', '0','-1/2', '0', '0', &  !4
-           '   0', '0', '0','   0', '1', '0', &  !5
-           ' 1/3', '0', '0','   0', '0', '0' /   !6
+   double precision mat_d(36)
+   double precision, parameter :: o2 = 1d0/2d0, o3 = 1d0/3d0, o6 = 1d0/6d0
+!  cart(xx,xy,xz,yy,yz,zz) = mat_d * sph(d0,d-2,d+1,d+2,d-1,xx)
+!  Inverse of cart2sph with the s-type (r^2) component taken as zero (pure 5d);
+!  stored row-major (6 rows x 6 cols). Fractions are evaluated exactly at compile time.
+   mat_d = (/ &
+   !    d0    d-2   d+1   d+2   d-1   xx
+       -o6,   0d0,  0d0,  o2,   0d0,  0d0, &  ! xx = -d0/6 + d+2/2
+        0d0,  1d0,  0d0,  0d0,  0d0,  0d0, &  ! xy =  d-2
+        0d0,  0d0,  1d0,  0d0,  0d0,  0d0, &  ! xz =  d+1
+       -o6,   0d0,  0d0, -o2,   0d0,  0d0, &  ! yy = -d0/6 - d+2/2
+        0d0,  0d0,  0d0,  0d0,  1d0,  0d0, &  ! yz =  d-1
+        o3,   0d0,  0d0,  0d0,  0d0,  0d0 /)  ! zz =  d0/3
 
    ind = 0
    do i = 1, irow

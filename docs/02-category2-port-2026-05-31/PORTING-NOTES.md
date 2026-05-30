@@ -5,12 +5,13 @@
   failed to build whole-directory, starting with `blockdave`, then `pccd`, and the
   programs they unblock by linkage.
 - **Build environment**: Ubuntu 24.04 / WSL2, gfortran 13.3.0, GNU Make 4.3, host `CCSDT-1`
-  (case-sensitive ext4 clone — see [the case-sensitivity caveat](../gfortran-port-2026-05-30/PORTING-NOTES.md)).
-- **Result**: working executables **72 → 79** (`bin/x*`). The pCCD / block-Davidson EOM
-  programs and their dependents now build: `xpccd`, `xpccd_drpmo`, `xpsi4dbg`, `xvee`,
-  `xrunpccd`, plus `xget_acesinfo`/`xget_acesmo`/`xpdens`/`xtdee`.
+  (case-sensitive ext4 clone — see [the case-sensitivity caveat](../01-gfortran-port-2026-05-30/PORTING-NOTES.md)).
+- **Result**: working executables **72 → 81** (`bin/x*`), and **every directory now
+  compiles with gfortran 13 — no failing directories remain.** Newly building:
+  `xpccd`, `xpccd_drpmo`, `xpsi4dbg`, `xvee`, `xrunpccd`, `xmopac`, the NWChem interface
+  `alice_nwchem`, plus `xget_acesinfo`/`xget_acesmo`/`xpdens`/`xtdee`.
 
-Follows the previous porting work in `docs/gfortran-port-2026-05-30/`.
+Follows the previous porting work in `docs/01-gfortran-port-2026-05-30/`.
 Full diff: `changes.patch` (23 files, +41 / −25; apply with `git apply`).
 
 ---
@@ -87,19 +88,83 @@ source fixes:
 
 ---
 
-## 5. Remaining work (still failing)
+## 4b. mopac (1 new file) and alice_nwchem (2 source fixes)
 
-| Directory | Failing .o | Notes |
+| File | Modified | Issue → fix |
 |---|---|---|
-| `alice_nwchem` | 8 | NWChem interface — optional; only needed when interfacing with NWChem. |
-| `mopac` | 1 | Undefined reference to `date_` — a legacy `DATE()` intrinsic gfortran does not provide. Needs a small wrapper (e.g. via `date_and_time`) or replacement. `mopac` is a standalone semi-empirical driver. |
+| `mopac/date_gfortran.f` (new) | 01:19 | `CALL DATE(IDATE)` (legacy Unix date routine, `IDATE` is `CHARACTER*24`) was an undefined reference `date_` — gfortran has no `DATE` intrinsic. Added a `SUBROUTINE DATE(STR)` wrapper that calls the `FDATE` intrinsic (returns a 24-char date string). `xmopac` now builds. |
+| `alice_nwchem/civec.f90` | 01:30 | Format `'(/,a,i)'` (no width on `i`) → `'(/,a,i5)'` (4 occurrences). |
+| `alice_nwchem/civec2.f90` | 01:30 | same as civec.f90 (7 occurrences). |
+
+## 4c. extiface (formerly alice_nwchem) — d-function transform rewrite + module order
+
+This directory (the external-program interface; renamed from `alice_nwchem` — see §7) was
+the last failing directory. Two parts:
+
+**(a) `alice_nwchem/function.f90` — rewrote the d-function cart↔sph transform.**
+It declared `double precision mat_d(36)` but initialised it via `DATA` with fraction
+**strings** (`'1/2'`, `'1/3'`, `'-1/6'`, …) and used them numerically
+(`mat(i,j)=mat_d(ind)`) — so it never compiled. The matrices were transcribed from the
+file's own comments (a standard unnormalized real solid-harmonic convention) into proper
+numeric Fortran:
+  - `cart2sph` (all integers): `d0 = 2zz−xx−yy`, `d-2 = xy`, `d+1 = xz`, `d+2 = xx−yy`,
+    `d-1 = yz`, and the 6th row the `r² = xx+yy+zz` s-contaminant.
+  - `sph2cart` (its inverse with the s-contaminant set to zero, i.e. pure 5d):
+    `xx = −d0/6 + d+2/2`, `yy = −d0/6 − d+2/2`, `zz = d0/3`, `xy = d-2`, `xz = d+1`,
+    `yz = d-1`. Verified by inverting the cart2sph matrix.
+  - Both use F90 array constructors; the fractions are `double precision, parameter`
+    values (`o2=1d0/2d0, o3=1d0/3d0, o6=1d0/6d0`) evaluated exactly at compile time
+    (no precision loss, unlike a decimal `DATA`).
+
+**(b) Module build order — `Makefiles/GNUmakefile.src`.**
+The directory uses Fortran 90 modules
+(`mod_fun`/`mod_print` → `mod_get_aces2`/`mod_civec`/`mod_info`/`mod_movec` → `mod_aovec`
+→ `mod_job` → `extiface`). FAST mode does not compute module deps, so an
+`ifeq (${CURR},extiface)` block sets the topological compile order via `OBJ`
+(mirroring the existing `asv` block):
+`OBJ := function.o print.o get_aces2.o civec.o nwchem_info.o movec.o aovec.o civec2.o job.o extiface.o`.
+
+Also `civec.f90`/`civec2.f90` had the `'(/,a,i)'` width-less format fixed to `'(/,a,i5)'`.
+
+## 5. Status — full build
+
+**Every directory now compiles with gfortran 13; no failing directories remain.**
+81 executables in `bin/x*`, libraries in `lib/`.
+
+Optional follow-ups (not required for the build):
+- Clean up the ~20 case-only-differing `.f`/`.F` pairs (see `../01-gfortran-port-2026-05-30/PORTING-NOTES.md` §0).
+- Remove the committed Intel-ifort artifact `blockdave/eig__genmod.{f90,mod}`.
+
+---
+
+## 7. Directory rename: `alice_nwchem` → `extiface`
+
+The directory held only an NWChem reader but is intended to grow into the home for
+interfaces to several external QC programs (NWChem, GAMESS, …), so it was renamed to the
+program-neutral `extiface` (ACES already has a separate `gamess` directory, so a
+program-specific name would be misleading). `git mv` preserves history. Changes:
+
+- `git mv alice_nwchem extiface`.
+- `git mv extiface/alice_nwchem.f90 extiface/extiface.f90` — the main program file must
+  match the directory name, since the binary is `x<dir>` and the main object is `<dir>.o`.
+  Updated `program alice_nwchem` / `end program alice_nwchem` → `… extiface`.
+- `Makefiles/GNUmakefile.src`: the module-order block now keys on
+  `ifeq (${CURR},extiface)` and lists `extiface.o` (was `alice_nwchem.o`).
+- Removed build artifacts that had been committed by mistake under the directory:
+  `*.mod` (compiled Fortran modules) and a stray `.print.f90.swp` (vim swap file).
+- Result: builds and installs as `bin/xextiface`; the rest of the tree is unaffected
+  (the directory is auto-discovered by the top-level makefile and is not referenced by
+  name anywhere else).
+
+Internal Fortran module names (`mod_fun`, `mod_job`, …) were left unchanged — they are not
+tied to the directory name.
 
 ---
 
 ## 6. Build & commit notes
 
 - Built and verified on the case-sensitive ext4 build tree; libraries install to `lib/`,
-  executables to `bin/`.
-- Authored in a clean commit clone; `git status` shows exactly the 23 files in
-  `changes.patch`. The build-system fix in §1 benefits every free-form source across the
-  whole tree, so expect it to help future Category-2 directories too.
+  executables to `bin/`. Full diff: `changes.patch` (source/build fixes plus the
+  `alice_nwchem` → `extiface` rename, §7).
+- The build-system fixes (§1 `MODDIRS_PREFIX`/`F9XFLAGS`, §4c module order) benefit every
+  free-form source across the whole tree, not just these directories.

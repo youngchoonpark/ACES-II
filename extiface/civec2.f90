@@ -65,11 +65,11 @@ subroutine civec_get_transvec2(tmat2,nocc,nvir,nocc_sym,nvir_sym, &
                Mat1(j,k) = Doo(j+ishift,k+ishift)
             enddo
          enddo
-         write(fileout,'(/,a,i)') "Print Mat1 (before diag.), sym=",i
+         write(fileout,'(/,a,i5)') "Print Mat1 (before diag.), sym=",i
          call print_r2mat(Mat1,nocc_sym(i),nocc_sym(i),5,fileout,1)
 
          call eig(Mat1,Mat2,1,nocc_sym(i),-1)
-         write(fileout,'(/,a,i)') "Print Mat1: eigenvalue, sym=",i
+         write(fileout,'(/,a,i5)') "Print Mat1: eigenvalue, sym=",i
          !call print_r2mat(Mat1,nocc_sym(i),nocc_sym(i),5,fileout,1)
          do j = 1, nocc_sym(i)
             eigval1(j+ishift) = Mat1(j,j)
@@ -83,7 +83,7 @@ subroutine civec_get_transvec2(tmat2,nocc,nvir,nocc_sym,nvir_sym, &
                eigvec1(j+ishift,k+ishift) = Mat2(j,k)
             enddo
          enddo
-         write(fileout,'(/,a,i)') "Print Mat2: eigenvector, sym=",i
+         write(fileout,'(/,a,i5)') "Print Mat2: eigenvector, sym=",i
          call print_r2mat(Mat2,nocc_sym(i),nocc_sym(i),5,fileout,1)
 
          deallocate(Mat1)
@@ -137,7 +137,7 @@ subroutine civec_get_transvec2(tmat2,nocc,nvir,nocc_sym,nvir_sym, &
             enddo
          enddo
          call eig(Mat1,Mat2,1,nocc_sym(i),-1)
-         write(fileout,'(/,a,i)') "Print Mat1: eigenvalue, sym=",i
+         write(fileout,'(/,a,i5)') "Print Mat1: eigenvalue, sym=",i
          !call print_r2mat(Mat1,nocc_sym(i),nocc_sym(i),5,fileout,1)
          do j = 1, nocc_sym(i)
             eigval1(j+ishift) = Mat1(j,j)
@@ -151,7 +151,7 @@ subroutine civec_get_transvec2(tmat2,nocc,nvir,nocc_sym,nvir_sym, &
                eigvec1(j+ishift,k+ishift) = Mat2(j,k)
             enddo
          enddo
-         write(fileout,'(/,a,i)') "Print Mat2: eigenvector, sym=",i
+         write(fileout,'(/,a,i5)') "Print Mat2: eigenvector, sym=",i
          call print_r2mat(Mat2,nocc_sym(i),nocc_sym(i),5,fileout,1)
 
          deallocate(Mat1)
@@ -184,7 +184,7 @@ subroutine civec_get_transvec2(tmat2,nocc,nvir,nocc_sym,nvir_sym, &
             enddo
          enddo
          call eig(Mat1,Mat2,1,nvir_sym(i),-1)
-         write(fileout,'(/,a,i)') "Print Mat1: eigenvalue, sym=",i
+         write(fileout,'(/,a,i5)') "Print Mat1: eigenvalue, sym=",i
          !call print_r2mat(Mat1,nvir_sym(i),nvir_sym(i),5,fileout,1)
          do j = 1, nvir_sym(i)
             eigval2(j+ishift) = Mat1(j,j)
@@ -199,7 +199,7 @@ subroutine civec_get_transvec2(tmat2,nocc,nvir,nocc_sym,nvir_sym, &
             enddo
          enddo
 
-         write(fileout,'(/,a,i)') "Print Mat2: eigenvector, sym=",i
+         write(fileout,'(/,a,i5)') "Print Mat2: eigenvector, sym=",i
          call print_r2mat(Mat2,nvir_sym(i),nvir_sym(i),5,fileout,1)
          deallocate(Mat1)
          deallocate(Mat2)

@@ -42,3 +42,13 @@ ifeq (${CURR},asv)
    LDFLAGS_EXTRA := ../joda/asv_ctl.o
    LDFLAGS_NUMLIBS :=
 endif
+
+# extiface (external-program interfaces: NWChem, GAMESS, ...) uses Fortran 90
+# modules; FAST mode does not compute module dependencies, so compile the
+# providers before their users (topological order):
+#   mod_fun/mod_print -> mod_get_aces2,mod_civec,mod_info,mod_movec -> mod_aovec
+#   -> mod_job -> extiface.
+ifeq (${CURR},extiface)
+   OBJ := function.o print.o get_aces2.o civec.o nwchem_info.o movec.o \
+          aovec.o civec2.o job.o extiface.o
+endif

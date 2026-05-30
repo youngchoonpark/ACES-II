@@ -8,8 +8,9 @@ consult it as needed (this is a shared, multi-contributor project).
 For every change set, create or update a documentation folder before considering the
 task done:
 
-- **Path:** `docs/<topic>-<YYYY-MM-DD>/` — the directory name **must include the date,
-  day included** (e.g. `docs/gfortran-port-2026-05-30/`).
+- **Path:** `docs/<NN>-<topic>-<YYYY-MM-DD>/` — prefix a **two-digit sequence number**
+  `NN` (`01`, `02`, …, next after the highest existing one) so the folders read in order,
+  and **include the date, day included** (e.g. `docs/01-gfortran-port-2026-05-30/`).
 - **Contents:**
   - A notes file (`PORTING-NOTES.md` or similar), written in **English**, containing:
     - a summary and the environment context;
@@ -18,7 +19,7 @@ task done:
     - build/run results and any remaining work;
     - organized so collaborators can review all changes at once.
   - `changes.patch` — the full `git diff`, so collaborators can review/apply it.
-- **Reference example:** `docs/gfortran-port-2026-05-30/`.
+- **Reference example:** `docs/01-gfortran-port-2026-05-30/`.
 
 ## Build environment (critical)
 
@@ -29,16 +30,14 @@ filesystem (Windows `/mnt/*`, default macOS).
 
 The host is auto-detected by the makefiles, so no `MACHSTATS` entry is needed
 (`gmake` works with no arguments; override with e.g. `gmake CMPLR=intel`).
-See `docs/gfortran-port-2026-05-30/PORTING-NOTES.md` for the full build procedure and history.
+See `docs/01-gfortran-port-2026-05-30/PORTING-NOTES.md` for the full build procedure and history.
 
 ## Open items (TODO)
 
-- gfortran 13 port status (executables building: 79 / `bin/x*`):
-  - DONE: `nddo`, `blockdave`, `pccd`, `liboo`, `get_acesinfo`, `get_acesmo`, and the
-    cascade (`vee`, `psi4dbg`, `pccd_drpmo`, `runpccd`, `pdens`, `tdee`).
-    See `docs/gfortran-port-2026-05-30/` and `docs/category2-port-2026-05-31/`.
-  - REMAINING: `alice_nwchem` (8 — NWChem interface, optional);
-    `mopac` (1 — undefined `date_` legacy intrinsic, needs a `date_and_time` wrapper).
+- gfortran 13 port: **COMPLETE — every directory compiles, 81 executables in `bin/x*`.**
+  See `docs/01-gfortran-port-2026-05-30/` and `docs/02-category2-port-2026-05-31/` for the full
+  record (build-system fixes + per-file source fixes, including the `extiface` —
+  formerly `alice_nwchem` — d-function transform rewrite and the directory rename).
 - Consider cleaning up the ~20 case-only-differing `.f`/`.F` pairs
-  (see `docs/gfortran-port-2026-05-30/PORTING-NOTES.md` §0).
+  (see `docs/01-gfortran-port-2026-05-30/PORTING-NOTES.md` §0).
 - Consider removing the committed Intel-ifort artifact `blockdave/eig__genmod.{f90,mod}`.
