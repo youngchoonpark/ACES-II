@@ -119,6 +119,16 @@ tests may also be hitting the 120 s smoke-test timeout). Each is likely its own 
 Recommended next step: drive the test suite (`test/`, 207 inputs / 195 reference outputs)
 case by case, starting from the cheapest SCF/MP2/CCSD jobs.
 
+**Update (2026-06-01) — most of those "failures" are not code bugs.** Triaging the same
+cheap smoke batch with `test/triage.sh` (see `TEST-TRIAGE.md`) shows the harness's flat
+1e-8 tolerance was hiding the real picture: of the 9 non-passing cheap cases, **5 are
+cross-compiler rounding (≤1e-6), 2 are numerical-gradient geometry drift (energy matches
+to ~1e-7), and 2 are stale reference data** (`zmat.004a`/`004b` store an MP2-magnitude
+`TOTENERG` in a plain-RHF test, contradicting their own `SCFENEG`, which our build
+reproduces to 10 digits) — **0 genuine bugs in this batch**. Triage every failure
+(`./triage.sh`) and chase only the `CRASH` and `REAL` buckets; that is where the
+remaining 4-byte/non-PIE runtime defects actually are.
+
 **Carried-over cleanups (still open, from docs/01–02):** the ~20 case-only `.f`/`.F` pairs;
 the committed Intel-ifort artifacts `blockdave/eig__genmod.{f90,mod}`. Separately, the
 per-directory `GNUmakefile`/`GNUmakefile.src` symlinks are build-tree artifacts the top-level
