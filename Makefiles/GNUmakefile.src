@@ -59,3 +59,11 @@ ifeq (${CURR},extiface)
    OBJ := function.o print.o get_aces2.o civec.o nwchem_info.o movec.o \
           aovec.o civec2.o job.o extiface.o
 endif
+
+# get_acesmo has the same F90-module dependency: main.F90 (program get_acesmo)
+# `use mod_movec` (movec.F90) and `use mod_info` (nwchem_info.F90). FAST mode
+# does not compute module deps, so compile the providers before main.o, else a
+# cold build fails with a missing mod_movec.mod/mod_info.mod.
+ifeq (${CURR},get_acesmo)
+   OBJ := aces_info.o nwchem_info.o movec.o print.o main.o
+endif
