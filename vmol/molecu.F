@@ -349,11 +349,13 @@ cYAU : new
       ITMP = J000 - I000
       ICORE(I000-1+20)=ITMP-20
 
-C     WRITE(6,*) 
+      WRITE(6,*)
 C
-C The above  statement is needed to get vmol to work with  gfortran on 
+C The above  statement is needed to get vmol to work with  gfortran on
 C Marcel's machine. I do not know whether this is universal. most likely
-C an optimization issue.
+C an optimization issue. (Confirmed needed under gfortran 13 -O2: without
+C it the ICORE(I000-1+20) store above is miscompiled and I2(20) reads 0,
+C tripping @LARM. The I/O acts as an optimization barrier.)
 C
       ICORE(J000-1+50)=ITOTMEM-ITMP-50
 cYAU : end

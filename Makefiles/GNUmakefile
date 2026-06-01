@@ -814,15 +814,23 @@ ifeq (${CMPLR},gnu) ############################################################
        CPPFLAGS = -P #-C
      # gfortran 10+ treats actual-argument rank/type mismatches as errors;
      # legacy ACES code relies on loose interfaces, so downgrade to warnings.
+     # 4-byte default integers (iintfp=2) to match ACES's memory model and the
+     # reference regression outputs; addresses stay 8-byte via -DF_ADR=integer*8.
+     # -fno-pie / -no-pie: build a non-PIE executable so the data segment and
+     # the sbrk heap (ACES core memory, _USE_SBRK) sit at low, fixed addresses
+     # that fit in the 4-byte default integer used as the lCore anchor offset.
+     # (A PIE binary is loaded at a high randomized address, overflowing lCore.)
        FFLAGS  = -fno-second-underscore -finit-local-zero \
-                 -fno-range-check -fdefault-integer-8 \
+                 -fno-range-check -fno-pie \
                  -fallow-argument-mismatch -std=legacy
      # .f90/.f95 (free-form) sources are compiled with F9XFLAGS, not FFLAGS.
-     # Mirror the same flags so they share 8-byte integers (ABI-consistent with
+     # Mirror the same flags so they share 4-byte integers (ABI-consistent with
      # the .F/.f sources) and tolerate the legacy loose interfaces.
        F9XFLAGS = -fno-second-underscore -finit-local-zero \
-                  -fno-range-check -fdefault-integer-8 \
+                  -fno-range-check -fno-pie \
                   -fallow-argument-mismatch -std=legacy
+       CFLAGS  += -fno-pie
+       LDFLAGS += -no-pie
        DEFINES       += -D_USE_SBRK -DF_ADR=integer*8
        FLAG_OPTIMIZE += -O2 -pipe -march=${MARCH}
    endif

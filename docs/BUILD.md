@@ -88,3 +88,8 @@ Full record of the gfortran 13 port and build-system modernization:
 - `docs/01-gfortran-port-2026-05-30/` — build-system fixes + first port pass.
 - `docs/02-category2-port-2026-05-31/` — blockdave, pccd, mopac, the `extiface`
   (formerly `alice_nwchem`) interface, and the cascade.
+- `docs/03-runtime-port-2026-06-01/` — runtime port: switched to the 4-byte-integer /
+  non-PIE model so calculations actually run (`test/zmat.001a` passes), and repaired two
+  defects that stopped a fresh clone from building at all (114 dead `/home/perera/...`
+  makefile symlinks; `docs/` auto-built). **Note:** the integer model changed here, so the
+  flags described above (`-fdefault-integer-8`) are superseded — see docs/03.

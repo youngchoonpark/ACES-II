@@ -35,10 +35,21 @@ The host is auto-detected by the makefiles, so no `MACHSTATS` entry is needed
 
 ## Open items (TODO)
 
-- gfortran 13 port: **COMPLETE — every directory compiles, 81 executables in `bin/x*`.**
-  See `docs/01-gfortran-port-2026-05-30/` and `docs/02-category2-port-2026-05-31/` for the full
-  record (build-system fixes + per-file source fixes, including the `extiface` —
-  formerly `alice_nwchem` — d-function transform rewrite and the directory rename).
+- gfortran 13 port (compile): **COMPLETE — every directory compiles, 81 executables in
+  `bin/x*`.** See `docs/01-gfortran-port-2026-05-30/` and
+  `docs/02-category2-port-2026-05-31/` (build-system fixes + per-file source fixes, incl. the
+  `extiface` — formerly `alice_nwchem` — d-function rewrite and rename).
+- gfortran 13 port (runtime): **IN PROGRESS.** The build now actually *runs* — `test/zmat.001a`
+  (H₂O SCF geom-opt) and `zmat.002a` pass after switching to the 4-byte-integer / non-PIE
+  model and fixing a VMOL `-O2` mis-optimization. See
+  `docs/03-runtime-port-2026-06-01/PORTING-NOTES.md`. **Remaining:** most regression tests
+  still fail in various places (a 12-test smoke sample passed 2/12); full validation is a
+  case-by-case effort over `test/` (207 inputs / 195 reference outputs).
+- Two defects found while making a fresh clone buildable were also fixed in docs/03: 114
+  committed makefile symlinks pointing to a dead `/home/perera/...` path, and `docs/` being
+  auto-built. (A clean checkout did **not** build before these.)
 - Consider cleaning up the ~20 case-only-differing `.f`/`.F` pairs
   (see `docs/01-gfortran-port-2026-05-30/PORTING-NOTES.md` §0).
 - Consider removing the committed Intel-ifort artifact `blockdave/eig__genmod.{f90,mod}`.
+- Consider un-committing the per-directory `GNUmakefile`/`GNUmakefile.src` symlinks (the
+  top-level makefile regenerates them) and `.gitignore`ing them.

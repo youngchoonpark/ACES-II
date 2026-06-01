@@ -1,0 +1,1154 @@
+diff --git a/Makefiles/GNUmakefile b/Makefiles/GNUmakefile
+index 9012f4f..02412bc 100644
+--- a/Makefiles/GNUmakefile
++++ b/Makefiles/GNUmakefile
+@@ -814,15 +814,23 @@ ifeq (${CMPLR},gnu) ############################################################
+        CPPFLAGS = -P #-C
+      # gfortran 10+ treats actual-argument rank/type mismatches as errors;
+      # legacy ACES code relies on loose interfaces, so downgrade to warnings.
++     # 4-byte default integers (iintfp=2) to match ACES's memory model and the
++     # reference regression outputs; addresses stay 8-byte via -DF_ADR=integer*8.
++     # -fno-pie / -no-pie: build a non-PIE executable so the data segment and
++     # the sbrk heap (ACES core memory, _USE_SBRK) sit at low, fixed addresses
++     # that fit in the 4-byte default integer used as the lCore anchor offset.
++     # (A PIE binary is loaded at a high randomized address, overflowing lCore.)
+        FFLAGS  = -fno-second-underscore -finit-local-zero \
+-                 -fno-range-check -fdefault-integer-8 \
++                 -fno-range-check -fno-pie \
+                  -fallow-argument-mismatch -std=legacy
+      # .f90/.f95 (free-form) sources are compiled with F9XFLAGS, not FFLAGS.
+-     # Mirror the same flags so they share 8-byte integers (ABI-consistent with
++     # Mirror the same flags so they share 4-byte integers (ABI-consistent with
+      # the .F/.f sources) and tolerate the legacy loose interfaces.
+        F9XFLAGS = -fno-second-underscore -finit-local-zero \
+-                  -fno-range-check -fdefault-integer-8 \
++                  -fno-range-check -fno-pie \
+                   -fallow-argument-mismatch -std=legacy
++       CFLAGS  += -fno-pie
++       LDFLAGS += -no-pie
+        DEFINES       += -D_USE_SBRK -DF_ADR=integer*8
+        FLAG_OPTIMIZE += -O2 -pipe -march=${MARCH}
+    endif
+diff --git a/Makefiles/GNUmakefile.src b/Makefiles/GNUmakefile.src
+index 5d8e0b5..4b4efad 100644
+--- a/Makefiles/GNUmakefile.src
++++ b/Makefiles/GNUmakefile.src
+@@ -14,7 +14,10 @@ DEFINES_EXTRA = -D_ASSERT -D_DOUG_KROLL -D_TDENS -D_MKLST -D_GETPTS \
+ 
+ OPTIMIZE = 1
+ DEBUG    = 0
+-64BIT    = 1
++# 64BIT=0 so F_64BIT is NOT defined -> C f_int is 4-byte int (iintln=4,
++# iintfp=2), consistent with the 4-byte Fortran default integer. Addresses
++# remain 8-byte (the gnu branch defines -DF_ADR=integer*8 unconditionally).
++64BIT    = 0
+ 
+ # MARCH selects the CPU target (default: native to the build host).
+ # Set MARCH = x86-64 for portable binaries.
+diff --git a/a2mix/GNUmakefile b/a2mix/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/a2mix/GNUmakefile
++++ b/a2mix/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/a2mix/GNUmakefile.src b/a2mix/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/a2mix/GNUmakefile.src
++++ b/a2mix/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/a2proc/GNUmakefile b/a2proc/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/a2proc/GNUmakefile
++++ b/a2proc/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/a2proc/GNUmakefile.src b/a2proc/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/a2proc/GNUmakefile.src
++++ b/a2proc/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/aces2/GNUmakefile b/aces2/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/aces2/GNUmakefile
++++ b/aces2/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/aces2/GNUmakefile.src b/aces2/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/aces2/GNUmakefile.src
++++ b/aces2/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/acescore/GNUmakefile b/acescore/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/acescore/GNUmakefile
++++ b/acescore/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/acescore/GNUmakefile.src b/acescore/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/acescore/GNUmakefile.src
++++ b/acescore/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/acescore/aces_cache_init.F b/acescore/aces_cache_init.F
+index ab453c6..3c2471e 100644
+--- a/acescore/aces_cache_init.F
++++ b/acescore/aces_cache_init.F
+@@ -96,10 +96,10 @@ c   o use ndx to point to the first double boundary in iCore(i0)
+       zTmp = 1 + c_adr(iCore(i0)) - c_adr(icache(1))
+ #else
+       zTmp = c_adr(iCore(i0))
+-      if (iand(zTmp,ifltln-1).ne.0) then
++      if (iand(zTmp,int(ifltln-1,kind(zTmp))).ne.0) then
+          i0 = i0 + 1
+          zTmp = c_adr(iCore(i0))
+-         if (iand(zTmp,ifltln-1).ne.0) then
++         if (iand(zTmp,int(ifltln-1,kind(zTmp))).ne.0) then
+             print *, '@ACES_CACHE_INIT: The core memory is not aligned.'
+             print *, '   &icore[0] = ',c_adr(iCore(1))
+             call aces_exit(1)
+@@ -107,7 +107,7 @@ c   o use ndx to point to the first double boundary in iCore(i0)
+          iMem = iMem - 1
+       end if
+       zTmp = zTmp - c_adr(icache(1))
+-      if (iand(zTmp,iintln-1).ne.0) then
++      if (iand(zTmp,int(iintln-1,kind(zTmp))).ne.0) then
+          print *, '@ACES_CACHE_INIT: The cache anchor is not aligned.'
+          print *, '   &icache[0] = ',c_adr(icache(1))
+          call aces_exit(1)
+@@ -140,7 +140,7 @@ c   o move i0 to a double boundary and decrease iMem
+          iMem = iMem - 1
+       end if
+ #else
+-      if (iand(zTmp,ifltln-1).ne.0) then
++      if (iand(zTmp,int(ifltln-1,kind(zTmp))).ne.0) then
+          i0 = i0 + 1
+          iMem = iMem - 1
+       end if
+diff --git a/acesutil/GNUmakefile b/acesutil/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/acesutil/GNUmakefile
++++ b/acesutil/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/acesutil/GNUmakefile.src b/acesutil/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/acesutil/GNUmakefile.src
++++ b/acesutil/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/anti/GNUmakefile b/anti/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/anti/GNUmakefile
++++ b/anti/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/anti/GNUmakefile.src b/anti/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/anti/GNUmakefile.src
++++ b/anti/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/bcktrn/GNUmakefile b/bcktrn/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/bcktrn/GNUmakefile
++++ b/bcktrn/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/bcktrn/GNUmakefile.src b/bcktrn/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/bcktrn/GNUmakefile.src
++++ b/bcktrn/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/c6coef/GNUmakefile b/c6coef/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/c6coef/GNUmakefile
++++ b/c6coef/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/c6coef/GNUmakefile.src b/c6coef/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/c6coef/GNUmakefile.src
++++ b/c6coef/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/cphf/GNUmakefile b/cphf/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/cphf/GNUmakefile
++++ b/cphf/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/cphf/GNUmakefile.src b/cphf/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/cphf/GNUmakefile.src
++++ b/cphf/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/crust/GNUmakefile b/crust/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/crust/GNUmakefile
++++ b/crust/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/crust/GNUmakefile.src b/crust/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/crust/GNUmakefile.src
++++ b/crust/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/dens/GNUmakefile b/dens/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/dens/GNUmakefile
++++ b/dens/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/dens/GNUmakefile.src b/dens/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/dens/GNUmakefile.src
++++ b/dens/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/dirmp2/GNUmakefile b/dirmp2/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/dirmp2/GNUmakefile
++++ b/dirmp2/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/dirmp2/GNUmakefile.src b/dirmp2/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/dirmp2/GNUmakefile.src
++++ b/dirmp2/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/eispack/GNUmakefile b/eispack/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/eispack/GNUmakefile
++++ b/eispack/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/eispack/GNUmakefile.src b/eispack/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/eispack/GNUmakefile.src
++++ b/eispack/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/fno/GNUmakefile b/fno/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/fno/GNUmakefile
++++ b/fno/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/fno/GNUmakefile.src b/fno/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/fno/GNUmakefile.src
++++ b/fno/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/gamess/GNUmakefile b/gamess/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/gamess/GNUmakefile
++++ b/gamess/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/gamess/GNUmakefile.src b/gamess/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/gamess/GNUmakefile.src
++++ b/gamess/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/gradzap/GNUmakefile b/gradzap/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/gradzap/GNUmakefile
++++ b/gradzap/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/gradzap/GNUmakefile.src b/gradzap/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/gradzap/GNUmakefile.src
++++ b/gradzap/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/intgrt/GNUmakefile b/intgrt/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/intgrt/GNUmakefile
++++ b/intgrt/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/intgrt/GNUmakefile.src b/intgrt/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/intgrt/GNUmakefile.src
++++ b/intgrt/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/intpack/GNUmakefile b/intpack/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/intpack/GNUmakefile
++++ b/intpack/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/intpack/GNUmakefile.src b/intpack/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/intpack/GNUmakefile.src
++++ b/intpack/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/intpack2vmol/GNUmakefile b/intpack2vmol/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/intpack2vmol/GNUmakefile
++++ b/intpack2vmol/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/intpack2vmol/GNUmakefile.src b/intpack2vmol/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/intpack2vmol/GNUmakefile.src
++++ b/intpack2vmol/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/intprc/GNUmakefile b/intprc/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/intprc/GNUmakefile
++++ b/intprc/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/intprc/GNUmakefile.src b/intprc/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/intprc/GNUmakefile.src
++++ b/intprc/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/itran/GNUmakefile b/itran/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/itran/GNUmakefile
++++ b/itran/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/itran/GNUmakefile.src b/itran/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/itran/GNUmakefile.src
++++ b/itran/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/joda/GNUmakefile b/joda/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/joda/GNUmakefile
++++ b/joda/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/joda/GNUmakefile.src b/joda/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/joda/GNUmakefile.src
++++ b/joda/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/lambda/GNUmakefile b/lambda/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/lambda/GNUmakefile
++++ b/lambda/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/lambda/GNUmakefile.src b/lambda/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/lambda/GNUmakefile.src
++++ b/lambda/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/lb/GNUmakefile b/lb/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/lb/GNUmakefile
++++ b/lb/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/lb/GNUmakefile.src b/lb/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/lb/GNUmakefile.src
++++ b/lb/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/lcct/GNUmakefile b/lcct/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/lcct/GNUmakefile
++++ b/lcct/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/lcct/GNUmakefile.src b/lcct/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/lcct/GNUmakefile.src
++++ b/lcct/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/libr/GNUmakefile b/libr/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/libr/GNUmakefile
++++ b/libr/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/libr/GNUmakefile.src b/libr/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/libr/GNUmakefile.src
++++ b/libr/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/libr2/GNUmakefile b/libr2/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/libr2/GNUmakefile
++++ b/libr2/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/libr2/GNUmakefile.src b/libr2/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/libr2/GNUmakefile.src
++++ b/libr2/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/librt3/GNUmakefile b/librt3/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/librt3/GNUmakefile
++++ b/librt3/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/librt3/GNUmakefile.src b/librt3/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/librt3/GNUmakefile.src
++++ b/librt3/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/linpack/GNUmakefile b/linpack/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/linpack/GNUmakefile
++++ b/linpack/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/linpack/GNUmakefile.src b/linpack/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/linpack/GNUmakefile.src
++++ b/linpack/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/makefile b/makefile
+index d3df1cb..a7b2076 100644
+--- a/makefile
++++ b/makefile
+@@ -41,7 +41,7 @@ tl_makefile_tl   := ${tl_makefile_root}/GNUmakefile.tl
+ # directories that do not get made
+ tl_tmp :=
+ tl_tmp += \
+-          lib bin include \
++          lib bin include docs \
+           module% \
+           scr tmp work test configure \
+           CVS Basis Info Makefiles Scripts Test aces.py%
+diff --git a/molcas/GNUmakefile b/molcas/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/molcas/GNUmakefile
++++ b/molcas/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/molcas/GNUmakefile.src b/molcas/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/molcas/GNUmakefile.src
++++ b/molcas/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/mopac/GNUmakefile b/mopac/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/mopac/GNUmakefile
++++ b/mopac/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/mopac/GNUmakefile.src b/mopac/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/mopac/GNUmakefile.src
++++ b/mopac/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/mpistubs/GNUmakefile b/mpistubs/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/mpistubs/GNUmakefile
++++ b/mpistubs/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/mpistubs/GNUmakefile.src b/mpistubs/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/mpistubs/GNUmakefile.src
++++ b/mpistubs/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/mpw/GNUmakefile b/mpw/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/mpw/GNUmakefile
++++ b/mpw/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/mpw/GNUmakefile.src b/mpw/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/mpw/GNUmakefile.src
++++ b/mpw/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/nddo/GNUmakefile b/nddo/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/nddo/GNUmakefile
++++ b/nddo/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/nddo/GNUmakefile.src b/nddo/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/nddo/GNUmakefile.src
++++ b/nddo/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/nlo/GNUmakefile b/nlo/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/nlo/GNUmakefile
++++ b/nlo/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/nlo/GNUmakefile.src b/nlo/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/nlo/GNUmakefile.src
++++ b/nlo/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/nmr/GNUmakefile b/nmr/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/nmr/GNUmakefile
++++ b/nmr/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/nmr/GNUmakefile.src b/nmr/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/nmr/GNUmakefile.src
++++ b/nmr/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/oeptools/GNUmakefile b/oeptools/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/oeptools/GNUmakefile
++++ b/oeptools/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/oeptools/GNUmakefile.src b/oeptools/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/oeptools/GNUmakefile.src
++++ b/oeptools/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/oombpt2/GNUmakefile b/oombpt2/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/oombpt2/GNUmakefile
++++ b/oombpt2/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/oombpt2/GNUmakefile.src b/oombpt2/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/oombpt2/GNUmakefile.src
++++ b/oombpt2/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/props/GNUmakefile b/props/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/props/GNUmakefile
++++ b/props/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/props/GNUmakefile.src b/props/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/props/GNUmakefile.src
++++ b/props/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/rpa/GNUmakefile b/rpa/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/rpa/GNUmakefile
++++ b/rpa/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/rpa/GNUmakefile.src b/rpa/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/rpa/GNUmakefile.src
++++ b/rpa/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/sbtools/GNUmakefile b/sbtools/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/sbtools/GNUmakefile
++++ b/sbtools/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/sbtools/GNUmakefile.src b/sbtools/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/sbtools/GNUmakefile.src
++++ b/sbtools/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/scfgrd/GNUmakefile b/scfgrd/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/scfgrd/GNUmakefile
++++ b/scfgrd/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/scfgrd/GNUmakefile.src b/scfgrd/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/scfgrd/GNUmakefile.src
++++ b/scfgrd/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/symcor/GNUmakefile b/symcor/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/symcor/GNUmakefile
++++ b/symcor/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/symcor/GNUmakefile.src b/symcor/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/symcor/GNUmakefile.src
++++ b/symcor/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/tdhf/GNUmakefile b/tdhf/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/tdhf/GNUmakefile
++++ b/tdhf/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/tdhf/GNUmakefile.src b/tdhf/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/tdhf/GNUmakefile.src
++++ b/tdhf/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/tools/GNUmakefile b/tools/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/tools/GNUmakefile
++++ b/tools/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/tools/GNUmakefile.src b/tools/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/tools/GNUmakefile.src
++++ b/tools/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/trp/GNUmakefile b/trp/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/trp/GNUmakefile
++++ b/trp/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/trp/GNUmakefile.src b/trp/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/trp/GNUmakefile.src
++++ b/trp/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/vcc5q/GNUmakefile b/vcc5q/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/vcc5q/GNUmakefile
++++ b/vcc5q/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/vcc5q/GNUmakefile.src b/vcc5q/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/vcc5q/GNUmakefile.src
++++ b/vcc5q/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/vcc5t/GNUmakefile b/vcc5t/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/vcc5t/GNUmakefile
++++ b/vcc5t/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/vcc5t/GNUmakefile.src b/vcc5t/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/vcc5t/GNUmakefile.src
++++ b/vcc5t/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/vcceh/GNUmakefile b/vcceh/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/vcceh/GNUmakefile
++++ b/vcceh/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/vcceh/GNUmakefile.src b/vcceh/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/vcceh/GNUmakefile.src
++++ b/vcceh/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/vdint/GNUmakefile b/vdint/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/vdint/GNUmakefile
++++ b/vdint/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/vdint/GNUmakefile.src b/vdint/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/vdint/GNUmakefile.src
++++ b/vdint/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/vea/GNUmakefile b/vea/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/vea/GNUmakefile
++++ b/vea/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/vea/GNUmakefile.src b/vea/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/vea/GNUmakefile.src
++++ b/vea/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/vee/GNUmakefile b/vee/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/vee/GNUmakefile
++++ b/vee/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/vee/GNUmakefile.src b/vee/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/vee/GNUmakefile.src
++++ b/vee/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/vksdint/GNUmakefile b/vksdint/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/vksdint/GNUmakefile
++++ b/vksdint/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/vksdint/GNUmakefile.src b/vksdint/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/vksdint/GNUmakefile.src
++++ b/vksdint/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/vmol/molecu.F b/vmol/molecu.F
+index 8443b61..9a24527 100644
+--- a/vmol/molecu.F
++++ b/vmol/molecu.F
+@@ -349,11 +349,13 @@ cYAU : new
+       ITMP = J000 - I000
+       ICORE(I000-1+20)=ITMP-20
+ 
+-C     WRITE(6,*) 
++      WRITE(6,*)
+ C
+-C The above  statement is needed to get vmol to work with  gfortran on 
++C The above  statement is needed to get vmol to work with  gfortran on
+ C Marcel's machine. I do not know whether this is universal. most likely
+-C an optimization issue.
++C an optimization issue. (Confirmed needed under gfortran 13 -O2: without
++C it the ICORE(I000-1+20) store above is miscompiled and I2(20) reads 0,
++C tripping @LARM. The I/O acts as an optimization barrier.)
+ C
+       ICORE(J000-1+50)=ITOTMEM-ITMP-50
+ cYAU : end
+diff --git a/vmol2ja/GNUmakefile b/vmol2ja/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/vmol2ja/GNUmakefile
++++ b/vmol2ja/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/vmol2ja/GNUmakefile.src b/vmol2ja/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/vmol2ja/GNUmakefile.src
++++ b/vmol2ja/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/vprops/GNUmakefile b/vprops/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/vprops/GNUmakefile
++++ b/vprops/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/vprops/GNUmakefile.src b/vprops/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/vprops/GNUmakefile.src
++++ b/vprops/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/vscf/GNUmakefile b/vscf/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/vscf/GNUmakefile
++++ b/vscf/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/vscf/GNUmakefile.src b/vscf/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/vscf/GNUmakefile.src
++++ b/vscf/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/vtran/GNUmakefile b/vtran/GNUmakefile
+index 9409ca7..4ec1762 120000
+--- a/vtran/GNUmakefile
++++ b/vtran/GNUmakefile
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile
+\ No newline at end of file
++../Makefiles/GNUmakefile
+\ No newline at end of file
+diff --git a/vtran/GNUmakefile.src b/vtran/GNUmakefile.src
+index bec4ad8..9931fba 120000
+--- a/vtran/GNUmakefile.src
++++ b/vtran/GNUmakefile.src
+@@ -1 +1 @@
+-/home/perera/Develop/ACESII/Makefiles/GNUmakefile.src
+\ No newline at end of file
++../Makefiles/GNUmakefile.src
+\ No newline at end of file
+diff --git a/xprep b/xprep
+old mode 100644
+new mode 100755
+diff --git a/xpromote b/xpromote
+old mode 100644
+new mode 100755
+diff --git a/xskip b/xskip
+old mode 100644
+new mode 100755
+diff --git a/xunskip b/xunskip
+old mode 100644
+new mode 100755

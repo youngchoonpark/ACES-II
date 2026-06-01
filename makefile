@@ -41,7 +41,7 @@ tl_makefile_tl   := ${tl_makefile_root}/GNUmakefile.tl
 # directories that do not get made
 tl_tmp :=
 tl_tmp += \
-          lib bin include \
+          lib bin include docs \
           module% \
           scr tmp work test configure \
           CVS Basis Info Makefiles Scripts Test aces.py%

@@ -96,10 +96,10 @@ c   o use ndx to point to the first double boundary in iCore(i0)
       zTmp = 1 + c_adr(iCore(i0)) - c_adr(icache(1))
 #else
       zTmp = c_adr(iCore(i0))
-      if (iand(zTmp,ifltln-1).ne.0) then
+      if (iand(zTmp,int(ifltln-1,kind(zTmp))).ne.0) then
          i0 = i0 + 1
          zTmp = c_adr(iCore(i0))
-         if (iand(zTmp,ifltln-1).ne.0) then
+         if (iand(zTmp,int(ifltln-1,kind(zTmp))).ne.0) then
             print *, '@ACES_CACHE_INIT: The core memory is not aligned.'
             print *, '   &icore[0] = ',c_adr(iCore(1))
             call aces_exit(1)
@@ -107,7 +107,7 @@ c   o use ndx to point to the first double boundary in iCore(i0)
          iMem = iMem - 1
       end if
       zTmp = zTmp - c_adr(icache(1))
-      if (iand(zTmp,iintln-1).ne.0) then
+      if (iand(zTmp,int(iintln-1,kind(zTmp))).ne.0) then
          print *, '@ACES_CACHE_INIT: The cache anchor is not aligned.'
          print *, '   &icache[0] = ',c_adr(icache(1))
          call aces_exit(1)
@@ -140,7 +140,7 @@ c   o move i0 to a double boundary and decrease iMem
          iMem = iMem - 1
       end if
 #else
-      if (iand(zTmp,ifltln-1).ne.0) then
+      if (iand(zTmp,int(ifltln-1,kind(zTmp))).ne.0) then
          i0 = i0 + 1
          iMem = iMem - 1
       end if

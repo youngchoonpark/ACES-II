@@ -14,7 +14,10 @@ DEFINES_EXTRA = -D_ASSERT -D_DOUG_KROLL -D_TDENS -D_MKLST -D_GETPTS \
 
 OPTIMIZE = 1
 DEBUG    = 0
-64BIT    = 1
+# 64BIT=0 so F_64BIT is NOT defined -> C f_int is 4-byte int (iintln=4,
+# iintfp=2), consistent with the 4-byte Fortran default integer. Addresses
+# remain 8-byte (the gnu branch defines -DF_ADR=integer*8 unconditionally).
+64BIT    = 0
 
 # MARCH selects the CPU target (default: native to the build host).
 # Set MARCH = x86-64 for portable binaries.
