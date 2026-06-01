@@ -19,7 +19,9 @@ recs += PARENERG REFDIPOL
 recs += SCFENEG TOTENER2 VACENEG
 recs += E0 E1 E2 KSSCFENG KSTOTELE S2SCF
 
-zmats:=$(wildcard zmat.*)
+# zmat.bas.143 is an EMSL basis-set definition file, not a runnable ZMAT
+# (no *ACES2 / TEST.DAT); exclude it so it is not reported as a failure.
+zmats:=$(filter-out zmat.bas.143, $(wildcard zmat.*))
 scripts:=$(wildcard script.*)
 
 SKIPOUT=0
@@ -35,7 +37,7 @@ auto=0
 ifeq (${GETRECS},0)
    define runzmat
       rm -rf ${workdir} && mkdir ${workdir}
-      cp ${pwd}/$@ ${workdir}/ZMAT && ln -s ${GENBAS} ${workdir}/GENBAS
+      cp ${pwd}/$@ ${workdir}/ZMAT && ln -s ${GENBAS} ${workdir}/GENBAS && ln -s ${ECPDATA} ${workdir}/ECPDATA
       out=${pwd}/out.$@; i=0; \
          printf "%s:\t" $@; \
          cd ${workdir} && xaces2 >$${out} 2>&1 || i=1; \
@@ -67,7 +69,7 @@ ifeq (${GETRECS},0)
 else
    define runzmat
       rm -rf ${workdir} && mkdir ${workdir}
-      cp ${pwd}/$@ ${workdir}/ZMAT && ln -s ${GENBAS} ${workdir}/GENBAS
+      cp ${pwd}/$@ ${workdir}/ZMAT && ln -s ${GENBAS} ${workdir}/GENBAS && ln -s ${ECPDATA} ${workdir}/ECPDATA
       out=${pwd}/out.$@; i=0; recf=${pwd}/rec.$@; rm -f $${recf}; \
          printf "%s records:\t" $@; \
          cd ${workdir} && xaces2 > $${out} || i=1; \

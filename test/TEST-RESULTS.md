@@ -1,22 +1,28 @@
 # ACES II regression results — gfortran-13 port
 
-Generated 2026-06-02 from `test/triage.sh` over all `zmat.*` inputs
-(realistic per-record tolerances via `retol.sh` applied; stale TOTENERG
-references in 004a/004b/004c/074 fixed). Commit `f00f7a0`.
+Updated 2026-06-02 from `test/triage.sh`. Realistic per-record tolerances
+(`retol.sh`) and stale-reference fixes applied; plus the runtime fixes below.
 
-## Summary: 106 PASS / 77 FAIL of 183
+## Summary: 113 PASS / 69 FAIL of 182
 
 | Status | Count | Meaning |
 |---|---|---|
-| PASS | 106 | within realistic tolerance |
+| PASS | 113 | within realistic tolerance |
 | CRASH | 35 | genuine runtime failure — **fix** |
 | REAL | 8 | completed, numerically wrong — **fix** |
-| DRIFT | 16 | geometry reorientation, energy matches — benign |
-| SETUP | 13 | missing basis/ECP, memory, size limit — environment |
-| NONCONVERGE | 4 | optimizer/SCF not converged — benign |
-| INCOMPLETE | 1 | timeout/interrupt — re-run |
+| DRIFT | 16 | geometry reorientation — benign |
+| SETUP | 4 | missing basis/ECP/memory/limit — environment |
+| NONCONVERGE | 5 | optimizer/SCF not converged — benign |
+| INCOMPLETE | 1 | timeout — re-run |
 
-**Genuine code-bug candidates: CRASH + REAL = 43.** The rest are benign, environment, or timeout.
+## Runtime fixes applied 2026-06-02
+
+| Fix | Kind | Recovered |
+|---|---|---|
+| `ecplib/ecp_int_driver.F`: ECP1INTS record length needs *Iintfp (4-byte record bug, same class as PTGP) | code | 134a, 134b |
+| `ecplib/ecp_main.F`: guard mulnuc<=0 -> multiplicity 1 (symmetry index unset with SYM=OFF zeroed NMPROTON -> 0-electron SCF / @OCCUPY-F) | code | 134c, 134d |
+| 3x `MEM_SIZE` 10GB/3GB -> 1GB (>2GB overflows the 4-byte integer model) | input | 035.lccsd1/2, 151.eomccsdpt |
+| `test/GNUmakefile`: link ECPDATA into the work dir (like GENBAS); exclude non-test zmat.bas.143 | harness | unblocks all ECP; removes 1 false failure |
 
 ---
 
@@ -51,6 +57,7 @@ references in 004a/004b/004c/074 fixed). Commit `f00f7a0`.
 | zmat.124e.fno | aborted in xvtran (no @ACES_EXIT; segfault/hard abort) -- real runtime failure |
 | zmat.124i.fno | aborted in xvtran (no @ACES_EXIT; segfault/hard abort) -- real runtime failure |
 | zmat.128 | died in xdens -- real runtime failure |
+| zmat.134f.ecp | died in xintprc -- real runtime failure |
 | zmat.138.ccsdt | aborted in xvmol2ja (no @ACES_EXIT; segfault/hard abort) -- real runtime failure |
 | zmat.139.ccsdpt | aborted in xvmol2ja (no @ACES_EXIT; segfault/hard abort) -- real runtime failure |
 | zmat.142.hfdft | died in xintgrt -- real runtime failure |
@@ -58,7 +65,6 @@ references in 004a/004b/004c/074 fixed). Commit `f00f7a0`.
 | zmat.144.hfdft | died in xintgrt -- real runtime failure |
 | zmat.145.ksgrad | died in xintgrt -- real runtime failure |
 | zmat.146.hfdft.ccsd | died in xintgrt -- real runtime failure |
-| zmat.151.eomccsdpt | aborted in xvmol2ja (no @ACES_EXIT; segfault/hard abort) -- real runtime failure |
 
 ## REAL (8)
 
@@ -94,25 +100,16 @@ references in 004a/004b/004c/074 fixed). Commit `f00f7a0`.
 | zmat.126a | gross deviations only in geometry (COORD/NUCREP); energy matches to <=PREC -- coordinate-frame/reorientation or equivalent minimum |
 | zmat.126e | gross deviations only in geometry (COORD/NUCREP); energy matches to <=PREC -- coordinate-frame/reorientation or equivalent minimum |
 
-## SETUP (13)
+## SETUP (4)
 
 | test | detail |
 |---|---|
-| zmat.035.lccsd1 | memory pool too small (raise the relevant mem keyword) -- environment/input/limit, not a code bug |
-| zmat.035.lccsd2 | memory pool too small (raise the relevant mem keyword) -- environment/input/limit, not a code bug |
 | zmat.103.ks | memory pool too small (raise the relevant mem keyword) -- environment/input/limit, not a code bug |
 | zmat.133 | basis set missing from GENBAS -- environment/input/limit, not a code bug |
-| zmat.134a.ecp | ECP data missing/unassignable (ECPDATA) -- environment/input/limit, not a code bug |
-| zmat.134b.ecp | ECP data missing/unassignable (ECPDATA) -- environment/input/limit, not a code bug |
-| zmat.134c.ecp | ECP data missing/unassignable (ECPDATA) -- environment/input/limit, not a code bug |
-| zmat.134d.ecp | ECP data missing/unassignable (ECPDATA) -- environment/input/limit, not a code bug |
-| zmat.134e.ecp | ECP data missing/unassignable (ECPDATA) -- environment/input/limit, not a code bug |
-| zmat.134f.ecp | ECP data missing/unassignable (ECPDATA) -- environment/input/limit, not a code bug |
 | zmat.140.dkh | basis exceeds the 256-function 4-byte-model limit -- environment/input/limit, not a code bug |
 | zmat.152.eommbpt2 | basis set missing from GENBAS -- environment/input/limit, not a code bug |
-| zmat.bas.143 | malformed input: no *ACES2 namelist (not a runnable ZMAT) -- environment/input/limit, not a code bug |
 
-## NONCONVERGE (4)
+## NONCONVERGE (5)
 
 | test | detail |
 |---|---|
@@ -120,6 +117,7 @@ references in 004a/004b/004c/074 fixed). Commit `f00f7a0`.
 | zmat.121b | geometry optimizer did not converge (max steps exceeded) -- not a code bug (tolerance/max-steps; numerical noise vs reference) |
 | zmat.121c | geometry optimizer did not converge (max steps exceeded) -- not a code bug (tolerance/max-steps; numerical noise vs reference) |
 | zmat.131 | geometry optimizer did not converge (max steps exceeded) -- not a code bug (tolerance/max-steps; numerical noise vs reference) |
+| zmat.134e.ecp | geometry optimizer did not converge (max steps exceeded) -- not a code bug (tolerance/max-steps; numerical noise vs reference) |
 
 ## INCOMPLETE (1)
 
@@ -127,19 +125,18 @@ references in 004a/004b/004c/074 fixed). Commit `f00f7a0`.
 |---|---|
 | zmat.135.ccsdtq | cut off mid-computation in ? (no @ACES_EXIT) -- likely timeout; re-run with more time |
 
-## PASS (106)
-
-Reproduce the reference within realistic tolerance (energy 1e-7 / Hessian 1e-5 / other 1e-6):
+## PASS (113)
 
     zmat.001a zmat.001d zmat.001e zmat.001f zmat.001g zmat.002a zmat.002b zmat.004a zmat.004b zmat.004c 
     zmat.010a zmat.010b zmat.010c zmat.011 zmat.012a zmat.012b zmat.012c zmat.013a zmat.013b zmat.013c 
     zmat.014a zmat.014a.apt zmat.014b zmat.014b.apt zmat.014c zmat.014c.apt zmat.020 zmat.021 zmat.022 
     zmat.022a zmat.022b zmat.022c zmat.023 zmat.023a zmat.024 zmat.025 zmat.026 zmat.026a zmat.031 
-    zmat.033 zmat.035.ccsd zmat.036 zmat.037 zmat.038 zmat.041 zmat.042 zmat.045.tdhf zmat.046 
-    zmat.046a zmat.046b zmat.047a zmat.047b zmat.047d zmat.048a zmat.049a zmat.049b zmat.053 zmat.054a 
-    zmat.054b zmat.056.mrcc zmat.057 zmat.061.mrcc zmat.062.mrcc zmat.063 zmat.064 zmat.070.mrcc 
-    zmat.074 zmat.082.mrcc zmat.083 zmat.084.mrcc zmat.089.mrcc zmat.095.mrcc zmat.109 zmat.110 
-    zmat.116a zmat.116b zmat.116c zmat.117a zmat.117b zmat.117c zmat.118a zmat.118b zmat.118c 
-    zmat.124a.fno zmat.124f.fno zmat.124g.fno zmat.124h.fno zmat.125a zmat.125b zmat.126b zmat.126c 
-    zmat.126d zmat.126f zmat.126g zmat.126h zmat.127 zmat.129 zmat.130 zmat.132 zmat.136.dccsd 
-    zmat.137.dccd zmat.141.rpa zmat.147.dkh zmat.148.dkh zmat.150.eomccsdpt zmat.153.eomgrad 
+    zmat.033 zmat.035.ccsd zmat.035.lccsd1 zmat.035.lccsd2 zmat.036 zmat.037 zmat.038 zmat.041 zmat.042 
+    zmat.045.tdhf zmat.046 zmat.046a zmat.046b zmat.047a zmat.047b zmat.047d zmat.048a zmat.049a 
+    zmat.049b zmat.053 zmat.054a zmat.054b zmat.056.mrcc zmat.057 zmat.061.mrcc zmat.062.mrcc zmat.063 
+    zmat.064 zmat.070.mrcc zmat.074 zmat.082.mrcc zmat.083 zmat.084.mrcc zmat.089.mrcc zmat.095.mrcc 
+    zmat.109 zmat.110 zmat.116a zmat.116b zmat.116c zmat.117a zmat.117b zmat.117c zmat.118a zmat.118b 
+    zmat.118c zmat.124a.fno zmat.124f.fno zmat.124g.fno zmat.124h.fno zmat.125a zmat.125b zmat.126b 
+    zmat.126c zmat.126d zmat.126f zmat.126g zmat.126h zmat.127 zmat.129 zmat.130 zmat.132 zmat.134a.ecp 
+    zmat.134b.ecp zmat.134c.ecp zmat.134d.ecp zmat.136.dccsd zmat.137.dccd zmat.141.rpa zmat.147.dkh 
+    zmat.148.dkh zmat.150.eomccsdpt zmat.151.eomccsdpt zmat.153.eomgrad 

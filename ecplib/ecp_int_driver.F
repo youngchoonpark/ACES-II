@@ -13,6 +13,7 @@ c----------------------------------------------------------------------
 C-----------------------------------------------------------------------
 #include "ecp.par"
 #include "ecp.com"
+#include "machsp.com"
 
 CSSS      parameter (nftmax = (ndilmx+1)*(ndilmx+2)*(ndilmx*3)/6)
 c     symmetry parameter:
@@ -220,7 +221,13 @@ C
       Write(6, "(a,(1x,F20.13))") "The int. check sum = ", w
 #endif
 C
-      Call Putrec(20, "JOBARC", "ECP1INTS", iloc*(iloc+1)/2, Ecpint)
+C Record length is in integer words; Ecpint is double precision, so the
+C length must carry the *Iintfp factor (as the matching Getrec in
+C vscf/process_ecp.F does). Omitting it stored Length, not Length*Iintfp,
+C which matched only under Iintfp=1 (8-byte int); with Iintfp=2 (4-byte)
+C the read tripped "@GETREC ECP1INTS record length mismatch".
+      Call Putrec(20, "JOBARC", "ECP1INTS", iloc*(iloc+1)/2*Iintfp,
+     &            Ecpint)
 C
       return
       end

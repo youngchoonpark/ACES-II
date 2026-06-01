@@ -79,9 +79,18 @@ c-----------------------------------------------------------------------
                 chgsum=0
                 do i=1,natoms
 C
-C account for symmetry 
+C account for symmetry. mulnuc(i) is the atom's symmetry-multiplicity
+C class index. With symmetry off (or when it is otherwise unset) it can
+C come back as 0, which indexes fmult(0)=0 and zeroes the proton count,
+C making @OCCUPY-F reject a valid charge/multiplicity. Treat a
+C non-positive index as a single, symmetry-unique atom (multiplicity 1).
 C
-                    chgsum=chgsum+charge(i)*fmult(mulnuc(i))
+                    imul=mulnuc(i)
+                    if (imul.le.0) then
+                       chgsum=chgsum+charge(i)
+                    else
+                       chgsum=chgsum+charge(i)*fmult(imul)
+                    endif
                 Enddo
 
                 nproton=idint(chgsum)
