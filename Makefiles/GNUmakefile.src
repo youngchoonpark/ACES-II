@@ -8,9 +8,13 @@
 # it so the tree stays portable. Override anything here or on the command line.
 
 # Functional feature defines for the intended ACES II build.
-# (-D_DEBUG_LVL0 enables verbose debug printing; remove for quiet runs.)
+# NOTE: _DEBUG_LVL0 is intentionally OFF. It activates verbose debug
+# instrumentation across the tree (e.g. trp/trps2.F calls check_t2/check_t2grd
+# diagnostics that read gradient lists not present in an energy-only CCSD(T)
+# run -> @GETLST "List does not exist" crash). The reference outputs are quiet
+# production runs; keep it off so runtime behavior matches.
 DEFINES_EXTRA = -D_ASSERT -D_DOUG_KROLL -D_TDENS -D_MKLST -D_GETPTS \
-                -D_DPOCC -D_RCC -D_DEBUG_LVL0
+                -D_DPOCC -D_RCC
 
 OPTIMIZE = 1
 DEBUG    = 0

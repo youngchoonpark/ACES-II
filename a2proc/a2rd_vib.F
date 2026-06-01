@@ -100,8 +100,12 @@ C Others are written as zeros. 06/2018.
         Call GETREC_C4(20,'JOBARC','VIB_TYPE',Nvib*IINTFP,TYPE)
         ENdif 
 #else
-        Call getcrec(20,'JOBARC','VIB_TYPE',Nvib*11*IINTFP,TYPE)
-#endif 
+C getcrec length is in CHARACTERS; TYPE is Character*11 Type(3*Natoms) =
+C Nvib*11 chars. The stray *IINTFP overran the buffer by Nvib*11 chars under
+C 4-byte integers (IINTFP=2), corrupting the heap (masked when IINTFP=1). The
+C record's first Nvib*11 chars are the real type strings; read just those.
+        Call getcrec(20,'JOBARC','VIB_TYPE',Nvib*11,TYPE)
+#endif
 C
         close(unit=4,status='KEEP')    
 
@@ -178,7 +182,7 @@ C Ajith Perera 12/2019.
            freq(ivib) = freqy
          Enddo 
 
-         Call getcrec(20,'JOBARC','VIB_TYPE',Nvib_read*11*IINTFP,TYPE)
+         Call getcrec(20,'JOBARC','VIB_TYPE',Nvib_read*11,TYPE)
 
          Ikeep = 0
          do ivib=1,Nvib_read

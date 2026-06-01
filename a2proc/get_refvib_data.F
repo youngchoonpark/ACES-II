@@ -68,7 +68,10 @@ C not in the correct order. Simply skip the first six frequencies.
       Call Getrec(20, "JOBARC", 'FREQUENC', 3*Nreals*IINTFP,
      &            VOmega)
 #endif 
-      Call Getcrec(20, "JOBARC", 'VIB_TYPE', 3*Nreals*11*IINTFP, 
+C getcrec length is in CHARACTERS; Vib_Type is Character*11 (3*Natoms). The
+C stray *IINTFP overran the buffer under 4-byte integers (IINTFP=2). Read the
+C real type strings (3*Nreals*11 chars) only.
+      Call Getcrec(20, "JOBARC", 'VIB_TYPE', 3*Nreals*11,
      &             Vib_Type)
 
 #ifdef _DEBUG_LVL0

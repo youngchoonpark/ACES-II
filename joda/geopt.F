@@ -934,7 +934,12 @@ c obtain symmetry info as in symcor. This is used in vib1 to create
 c curvy_fdif file. Use full irreps following symcor 'fds4' logic
 c
 CMN      CALL GETCREC(20,'JOBARC','FULLPTGP',8,GRPSYM)
-      CALL GETCREC(20,'JOBARC','PTGP',8,GRPSYM)
+C The PTGP record stores a 4-character point-group label (written by
+C joda/symmetry.F as PUTCREC("PTGP    ",4)); read it with the same length.
+C Reading 8 here requested 2 integer words vs the 1 stored under 4-byte
+C integers (the mismatch was masked under 8-byte integers, where both
+C lengths round to 1 word). Only GRPSYM(1:4) is used below.
+      CALL GETCREC(20,'JOBARC','PTGP    ',4,GRPSYM)
       IPOS = LINBLNK(GRPSYM(1:4))
       IF (
      &    (GRPSYM(1:1).EQ.'C'.AND.GRPSYM(IPOS:IPOS).NE.'v'.OR.
