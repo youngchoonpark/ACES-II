@@ -39,12 +39,25 @@ The host is auto-detected by the makefiles, so no `MACHSTATS` entry is needed
   `bin/x*`.** See `docs/01-gfortran-port-2026-05-30/` and
   `docs/02-category2-port-2026-05-31/` (build-system fixes + per-file source fixes, incl. the
   `extiface` — formerly `alice_nwchem` — d-function rewrite and rename).
-- gfortran 13 port (runtime): **IN PROGRESS.** The build now actually *runs* — `test/zmat.001a`
-  (H₂O SCF geom-opt) and `zmat.002a` pass after switching to the 4-byte-integer / non-PIE
-  model and fixing a VMOL `-O2` mis-optimization. See
-  `docs/03-runtime-port-2026-06-01/PORTING-NOTES.md`. **Remaining:** most regression tests
-  still fail in various places (a 12-test smoke sample passed 2/12); full validation is a
-  case-by-case effort over `test/` (207 inputs / 195 reference outputs).
+- gfortran 13 port (runtime): **IN PROGRESS — full regression suite now at 119 PASS / 182**
+  (`test/TEST-RESULTS.md`, run via `test/triage.sh`). The build runs and the 4-byte-integer /
+  non-PIE model is in place (`docs/03-runtime-port-2026-06-01/`); subsequent fixes:
+  - **docs/04** — ECP: symmetric `NMPROTON` via JOBARC `COMPPOPV` (`@OCCUPY-F`), `C2DIIS` for
+    a hard Cu₂O₂²⁺ SCF. (+2 → 114)
+  - **docs/05** — DFT/KS: `KSPRINT` logical & `NREALATM` integer read/written as `iintfp`
+    words (should be length 1) — de-crashed all 8 xintgrt tests. (+3 → 117)
+  - **docs/06** — DFT grid **gfortran `-O2` core-array aliasing miscompile**: the inner
+    angular-loop bound `kscore(pgrdangpts+grid-1)` was cached across the `oct()` call that
+    rewrites it, collapsing the grid (density → ~0). Fixed with `volatile kscore` in 4 grid
+    drivers (`numintint`/`setnumint`/`numinteff`/`numintAG`). (+3 → 118)
+  - **docs/07** — same `-O2` aliasing class via dummy-argument aliasing in `vksdint/equi.F`
+    (the KS-gradient symmetry map); `volatile kscore,comp,comppov,e`. (+1 → 119)
+  - **Remaining real defects (~38):** see `test/TEST-RESULTS.md`. Largest groups: **MRCC**
+    (14, `xmrcc`/`xvip`/`xvee`), **FNO** (5, `xvtran`), `xvcc @GETLST(1,61)` (3), high-order
+    CC `138/139` (`xvmol2ja`), `028/029/032`, `128` (`xdens`); **REAL** (8: `044`, `048b`,
+    6× mrcc); **open-shell HF-DFT gradient** `142–144` (logic defect, not `-O2`) and
+    `134e.ecp` (garbage ECP gradient). Plus 3 MRCC **HANGs** (`070/082/095`, numerically
+    correct but a non-terminating `xvip` loop) and benign DRIFT/SETUP/NONCONVERGE.
 - Two defects found while making a fresh clone buildable were also fixed in docs/03: 114
   committed makefile symlinks pointing to a dead `/home/perera/...` path, and `docs/` being
   auto-built. (A clean checkout did **not** build before these.)
