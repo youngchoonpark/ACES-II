@@ -1,0 +1,119 @@
+diff --git a/test/TEST-RESULTS.md b/test/TEST-RESULTS.md
+index 6970da3..bd430de 100644
+--- a/test/TEST-RESULTS.md
++++ b/test/TEST-RESULTS.md
+@@ -6,19 +6,19 @@ through and resumed to completion; `run-all-2026-06-02.log` ends with "Finished
+ all tests."). Realistic per-record tolerances (`retol.sh`) and stale-reference fixes
+ applied; plus the runtime fixes below.
+ 
+-## Summary: 118 PASS / 64 FAIL of 182
++## Summary: 119 PASS / 63 FAIL of 182
+ 
+ | Status | Count | Meaning |
+ |---|---|---|
+-| PASS | 118 | within realistic tolerance (incl. 3 HANG — see below) |
++| PASS | 119 | within realistic tolerance (incl. 3 HANG — see below) |
+ | CRASH | 27 | genuine runtime failure — **fix** (incl. 134f = 2GB-file limit, really SETUP) |
+ | REAL | 8 | completed, numerically wrong — **fix** |
+ | DRIFT | 16 | geometry reorientation — benign |
+ | SETUP | 4 | missing basis/ECP/memory/limit — environment |
+-| NONCONVERGE | 9 | optimizer/SCF not converged (134e, 142–145 = residual KS-gradient, see below) |
++| NONCONVERGE | 8 | optimizer/SCF not converged (134e + 142–144 open-shell KS-gradient, see below) |
+ | INCOMPLETE | 0 | (none this run) |
+ 
+-## DFT/KS fixes applied 2026-06-02 (xintgrt group: 0/8 → 4/8 PASS, DFT now functional)
++## DFT/KS fixes applied 2026-06-02 (xintgrt group: 0/8 → 5/8 PASS, DFT now functional)
+ 
+ All eight KS/DFT tests (`104/105/106.ks`, `142/143/144.hfdft`, `145.ksgrad`,
+ `146.hfdft.ccsd`) crashed identically (`died in xintgrt`). Three distinct bug classes,
+@@ -46,17 +46,26 @@ then fixed at the source with **`volatile kscore`** in each of the four grid dri
+ | `intgrt/numintint.F` | post-SCF density (xintgrt) | density 0.0156 → 17.998 ✓ |
+ | `intgrt/setnumint.F` | SCF-time XC (xvscf) | KS-SCF energy now matches the reference to 10 digits ✓ |
+ | `vksdint/numintAG.F` | analytic KS gradient (xvksdint) | KS forces RMS 0.085 → ≤1e-3 ✓ |
++| `vksdint/equi.F` | gradient symmetry-equivalence map | closed-shell KS forces fully converge — **145.ksgrad PASS** |
+ | `intgrt/numinteff.F` | alternate XC path | same defect, fixed defensively |
+ 
+-Net: **104.ks, 105.ks, 106.ks** now PASS (correct KS energies/geometry), joining
+-**146.hfdft.ccsd** → 4/8. The grid fix is `-O2`-clean (no per-file `-O0` needed).
++`equi.F` is a sharper instance: the caller passes three sections of the **same `kscore`
++array** as the dummy arguments `comp`, `comppov`, `e`
++(`equi(kscore(pcompmemb),..,kscore(pcomppopv),kscore(equ))`); `-O1+` assumed the dummies
++did not alias and reordered the `e(ref,..)` stores against the reads, mislabelling the
++symmetry-equivalent atoms. Fixed with `volatile kscore, comp, comppov, e` (marking
++`volatile kscore` alone was insufficient — the aliasing is through the dummy args).
+ 
+-### (c) residual KS-gradient error (left open) — blocks 142–145
+-With (a)+(b) the DFT subsystem works, but `142/143/144.hfdft` (open-shell `UHF`/`HFDFT`,
+-`OPT_MAXCYC=1` single-gradient checks) and `145.ksgrad` still carry a small residual
+-force (RMS ~1e-2 … 1e-3, down from 0.085) that keeps the gradient/optimizer just short
+-of the reference. A further, smaller defect in the (open-shell?) KS-gradient assembly
+-remains — these now sit in NONCONVERGE.
++Net: **104.ks, 105.ks, 106.ks, 145.ksgrad** now PASS (correct KS energies/geometry/
++forces), joining **146.hfdft.ccsd** → **5/8**. All `-O2`-clean (no per-file `-O0`).
++
++### (c) open-shell HFDFT gradient — blocks 142/143/144 (left open, NOT an -O2 bug)
++`142/143/144.hfdft` are open-shell (`REF=UHF`, `MULTI=2`) HF-DFT (`kspot=hf`,
++`func=becke,lyp`) single-gradient checks (`OPT_MAXCYC=1`, empty TEST.DAT → must converge
++in one cycle). Their analytic gradient computes and is translationally invariant, but
++carries a residual force (RMS ~0.017) so the one optimization step never converges. This
++is **unchanged at `-O0`** (both `intgrt` and `vksdint`), so it is a genuine open-shell
++KS-gradient logic/port defect, not a `-O2` miscompile — a separate, deeper item.
+ 
+ ## ECP fixes applied 2026-06-02 (134 group: 2/6 → 4/6 PASS)
+ 
+@@ -184,21 +193,20 @@ cycle). Both are now addressed at the root rather than relied upon as borderline
+ | zmat.140.dkh | basis exceeds the 256-function 4-byte-model limit -- environment/input/limit, not a code bug |
+ | zmat.152.eommbpt2 | basis set missing from GENBAS -- environment/input/limit, not a code bug |
+ 
+-## NONCONVERGE (9)
++## NONCONVERGE (8)
+ 
+ | test | detail |
+ |---|---|
+-| zmat.142.hfdft | grid -O2 fixed; KS forces RMS 0.085 → ~0.017 but not yet zero -- residual KS-gradient error (open-shell UHF/HFDFT, OPT_MAXCYC=1) |
+-| zmat.145.ksgrad | grid -O2 fixed; KS forces RMS 0.085 → ~0.001 but optimizer stalls just short -- residual KS-gradient error |
+-| zmat.143.hfdft | same as 142 -- residual KS-gradient error after the grid -O2 fix |
+-| zmat.144.hfdft | same as 142 -- residual KS-gradient error after the grid -O2 fix |
++| zmat.142.hfdft | open-shell (UHF/HFDFT) analytic gradient carries a residual force RMS ~0.017 (unchanged at -O0) so OPT_MAXCYC=1 never converges -- open-shell KS-gradient logic defect, not -O2 |
++| zmat.143.hfdft | same as 142 -- open-shell KS-gradient logic defect |
++| zmat.144.hfdft | same as 142 -- open-shell KS-gradient logic defect |
+ | zmat.121a | geometry optimizer did not converge (max steps exceeded) -- not a code bug (tolerance/max-steps; numerical noise vs reference) |
+ | zmat.121b | geometry optimizer did not converge (max steps exceeded) -- not a code bug (tolerance/max-steps; numerical noise vs reference) |
+ | zmat.121c | geometry optimizer did not converge (max steps exceeded) -- not a code bug (tolerance/max-steps; numerical noise vs reference) |
+ | zmat.131 | geometry optimizer did not converge (max steps exceeded) -- not a code bug (tolerance/max-steps; numerical noise vs reference) |
+ | zmat.134e.ecp | reported "max steps exceeded", but the real cause is a garbage ECP MBPT(2) gradient (dV/dR ≈ −334 hartree/bohr; RMS force overflows to ****) -- a **real ECP-gradient defect**, not benign |
+ 
+-## PASS (118)
++## PASS (119)
+ 
+ `†` = numerically correct but **HANGs** (non-terminating xvip loop; see the HANG section).
+ 
+@@ -210,7 +218,7 @@ cycle). Both are now addressed at the root rather than relied upon as borderline
+     zmat.045.tdhf zmat.046 zmat.046a zmat.046b zmat.047a zmat.047b zmat.047d zmat.048a zmat.049a
+     zmat.049b zmat.053 zmat.054a zmat.054b zmat.056.mrcc zmat.057 zmat.061.mrcc zmat.062.mrcc zmat.063
+     zmat.064 zmat.070.mrcc† zmat.074 zmat.082.mrcc† zmat.083 zmat.084.mrcc zmat.089.mrcc zmat.095.mrcc†
+-    zmat.104.ks zmat.105.ks zmat.106.ks zmat.146.hfdft.ccsd
++    zmat.104.ks zmat.105.ks zmat.106.ks zmat.145.ksgrad zmat.146.hfdft.ccsd
+     zmat.109 zmat.110 zmat.116a zmat.116b zmat.116c zmat.117a zmat.117b zmat.117c zmat.118a zmat.118b
+     zmat.118c zmat.124a.fno zmat.124f.fno zmat.124g.fno zmat.124h.fno zmat.125a zmat.125b zmat.126b
+     zmat.126c zmat.126d zmat.126f zmat.126g zmat.126h zmat.127 zmat.129 zmat.130 zmat.132 zmat.134a.ecp
+diff --git a/vksdint/equi.F b/vksdint/equi.F
+index 123d725..61b7545 100644
+--- a/vksdint/equi.F
++++ b/vksdint/equi.F
+@@ -13,6 +13,15 @@ c     &  CA(totprim,naobasfn)
+          integer ref, k,i,j,comp(natoms),comppov(natoms)
+ 
+        integer ncount, e(natoms,natoms)
++c The caller passes comp, comppov and e as three DIFFERENT sections of the
++c same kscore core array (equi(kscore(pcompmemb),..,kscore(pcomppopv),
++c kscore(equ))). gfortran -O1+ assumes the dummy arrays do not alias each
++c other or the global kscore, so it cached/reordered the e(ref,..) stores
++c against the comp/comppov/kscore reads -- the symmetry-equivalence map
++c came out wrong, leaving a small residual KS-gradient force that stalled
++c the geometry optimization. Mark them volatile so every access is a real
++c memory reference. (Same -O2 aliasing class as numintint.F.)
++       volatile kscore, comp, comppov, e
+ 
+        i=1
+        do j=1,ncount 
