@@ -21,6 +21,8 @@ C
      &          nrcstr(Mxatms,Maxang,Mxprim),IGenby(Mxatms),
      &          Coord(3,Mxatms)
 C
+      Dimension iorbpop(Mxatms)
+C
       Dimension  Cint(Maxmem)
 C
       COMMON /INDX/ PC(512),DSTRT(8,MXCBF),NTAP,LU2,NRSS,NUCZ,ITAG,
@@ -76,20 +78,24 @@ c-----------------------------------------------------------------------
 c  Summation over the charges and storage of this value
 c-----------------------------------------------------------------------
 
+C
+C The post-ECP proton count must sum each symmetry-unique atom's
+C (ECP-reduced) charge over ALL of its symmetry-equivalent images.
+C COMPPOPV (the per-orbit population written to JOBARC by xvmol2ja, and
+C the same vector SymEqv uses below) is the authoritative multiplicity.
+C The in-common MULNUC/FMULT are not reliably populated in the ECP path:
+C with symmetry ON they come back 0, so the previous "treat as a single
+C atom" guard undercounted (e.g. Cl2 counted 7 protons instead of 14)
+C and @OCCUPY-F then rejected a valid closed-shell singlet.
+C
+                call getrec(20,'JOBARC','COMPNORB',1,norbit)
+                call getrec(20,'JOBARC','COMPPOPV',norbit,iorbpop)
                 chgsum=0
                 do i=1,natoms
-C
-C account for symmetry. mulnuc(i) is the atom's symmetry-multiplicity
-C class index. With symmetry off (or when it is otherwise unset) it can
-C come back as 0, which indexes fmult(0)=0 and zeroes the proton count,
-C making @OCCUPY-F reject a valid charge/multiplicity. Treat a
-C non-positive index as a single, symmetry-unique atom (multiplicity 1).
-C
-                    imul=mulnuc(i)
-                    if (imul.le.0) then
-                       chgsum=chgsum+charge(i)
+                    if (i.le.norbit) then
+                       chgsum=chgsum+charge(i)*dfloat(iorbpop(i))
                     else
-                       chgsum=chgsum+charge(i)*fmult(imul)
+                       chgsum=chgsum+charge(i)
                     endif
                 Enddo
 
