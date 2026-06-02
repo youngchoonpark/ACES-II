@@ -33,8 +33,12 @@
       istart=1
       call setbashfks
       call getrec(20,'JOBARC','NSYMPERT',27,ntpert)
-      call getrec(20,'JOBARC','NREALATM',iintfp,natom)
-      call formsd(icore(istart),icrsiz,iuhf)       
+c NREALATM is a single integer (written with length 1 in joda/fetchz.F);
+c reading iintfp words (=2 in the 4-byte-integer model) overruns it and
+c trips a @GETREC record-length mismatch. iintfp was 1 only in the old
+c 8-byte-integer build.
+      call getrec(20,'JOBARC','NREALATM',1,natom)
+      call formsd(icore(istart),icrsiz,iuhf)
       call formfd(icore(istart),icrsiz,iuhf)
        
       ifiaaa=istart

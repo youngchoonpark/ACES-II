@@ -378,7 +378,11 @@ CSSS     &                               iintfp,ehar)
 c Check if the density is from a KS calculation.
 c If so, print the energies from the KS calculation.
 
-         call getrec(1,'JOBARC','KSPRINT',iintfp,print_post_ks)
+c KSPRINT holds a single logical flag = one default-integer word. Reading
+c iintfp words (=2 in the 4-byte-integer model) overruns the 4-byte logical
+c by 4 bytes and clobbers the adjacent local (pnull), which later trips
+c @RELPTR. iintfp happened to be 1 only in the old 8-byte-integer build.
+         call getrec(1,'JOBARC','KSPRINT',1,print_post_ks)
 
          if (print_post_ks) then
 C#ifdef _DEBUG

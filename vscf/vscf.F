@@ -997,7 +997,9 @@ c 07/02 Ajith Perera,
             call putrec(20,'JOBARC','HFDFTGRA',1,0)
            end if
            if (.not. dkhess) call init_ks
-           call putrec(1,'JOBARC','KSPRINT',iintfp,scfks)
+c KSPRINT is a single logical flag = one default-integer word; writing
+c iintfp words over-reads the 4-byte logical in the 4-byte-integer model.
+           call putrec(1,'JOBARC','KSPRINT',1,scfks)
            call setupgrd(max_angpts)
            call getrec(1,'JOBARC','COMPNORB',1,icompnorb)
            ncount = icompnorb

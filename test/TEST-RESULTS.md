@@ -6,16 +6,39 @@ through and resumed to completion; `run-all-2026-06-02.log` ends with "Finished 
 all tests."). Realistic per-record tolerances (`retol.sh`) and stale-reference fixes
 applied; plus the runtime fixes below.
 
-## Summary: 114 PASS / 68 FAIL of 182
+## Summary: 117 PASS / 65 FAIL of 182
 
 | Status | Count | Meaning |
 |---|---|---|
-| PASS | 114 | within realistic tolerance (incl. 3 HANG — see below) |
-| CRASH | 35 | genuine runtime failure — **fix** (incl. 134f = 2GB-file limit, really SETUP) |
-| REAL | 8 | completed, numerically wrong — **fix** |
+| PASS | 117 | within realistic tolerance (incl. 3 HANG — see below) |
+| CRASH | 27 | genuine runtime failure — **fix** (incl. 134f = 2GB-file limit, really SETUP) |
+| REAL | 10 | completed, numerically wrong — **fix** (incl. 104/105.ks = DFT grid, see below) |
 | DRIFT | 16 | geometry reorientation — benign |
 | SETUP | 4 | missing basis/ECP/memory/limit — environment |
-| NONCONVERGE | 5 | optimizer/SCF not converged — benign (134e = real ECP-gradient defect, see below) |
+| NONCONVERGE | 8 | optimizer/SCF not converged (134e, 142–144 = real defects, see below) |
+
+## DFT/KS fixes applied 2026-06-02 (xintgrt group: 0/8 → 3/8 PASS, rest de-crashed)
+
+All eight KS/DFT tests (`104/105/106.ks`, `142/143/144.hfdft`, `145.ksgrad`,
+`146.hfdft.ccsd`) crashed identically (`died in xintgrt`). Two distinct
+record-length-mismatch bugs of the **same class as the ECP `iintfp` bugs** were the
+cause — a scalar read/written as `iintfp` words (=2 in the 4-byte model; it was 1 only
+in the old 8-byte build), overrunning the target and clobbering memory:
+
+| fix | kind | files | recovers |
+|---|---|---|---|
+| `KSPRINT` logical read/written as `iintfp` words overran the 4-byte logical and clobbered the adjacent local `pnull` → `@RELPTR: invalid pointer`. Use length **1**. | code | `intgrt/numintint.F`, `intgrt/numinteff.F`, `vscf/vscf.F` | de-crashes all 8; **106.ks, 145.ksgrad, 146.hfdft.ccsd PASS** |
+| `NREALATM` integer read as `iintfp` words → `@GETREC: record length mismatch` in xvksdint. Use length **1**. | code | `vksdint/vhfksdint.F` | de-crashes 142/143/144 (then blocked by the grid defect below) |
+
+**Remaining DFT blocker (not a crash):** the numerical grid integrates the density to
+~0 electrons at `-O2` (C₂H₆ should give 18; we get 0.0156). It is correct at `-O0`, so
+it is a gfortran `-O2` mis-optimization in the grid code (same family as the VMOL `-O2`
+store-drop fixed in docs/03) — **but** building `intgrt` at `-O0` fixes the single-point
+KS energies (104/105 then PASS) while **regressing** the geometry-optimization cases
+(106/145 start grinding) because the KS *forces* are still wrong. So `-O0` is a net
+wash and was **not** applied. `104/105.ks` (wrong KS energy → REAL) and `142–144.hfdft`
+(wrong KS forces → optimizer never converges, NONCONVERGE) need the specific grid `-O2`
+statement found and fixed at the source. Left open.
 | INCOMPLETE | 0 | (none this run) |
 
 ## ECP fixes applied 2026-06-02 (134 group: 2/6 → 4/6 PASS)
@@ -69,7 +92,7 @@ cycle). Both are now addressed at the root rather than relied upon as borderline
 
 ---
 
-## CRASH (35)
+## CRASH (27)
 
 | test | detail |
 |---|---|
@@ -91,9 +114,6 @@ cycle). Both are now addressed at the root rather than relied upon as borderline
 | zmat.098.mrcc | aborted in xmrcc (no @ACES_EXIT; segfault/hard abort) -- real runtime failure |
 | zmat.099.mrcc | aborted in xmrcc (no @ACES_EXIT; segfault/hard abort) -- real runtime failure |
 | zmat.100.mrcc | died in xvip : List ( 1 , 110 ) does not exist. -- real runtime failure |
-| zmat.104.ks | died in xintgrt -- real runtime failure |
-| zmat.105.ks | died in xintgrt -- real runtime failure |
-| zmat.106.ks | died in xintgrt -- real runtime failure |
 | zmat.124b.fno | aborted in xvtran (no @ACES_EXIT; segfault/hard abort) -- real runtime failure |
 | zmat.124c.fno | aborted in xvtran (no @ACES_EXIT; segfault/hard abort) -- real runtime failure |
 | zmat.124d.fno | aborted in xvcc (no @ACES_EXIT; segfault/hard abort) -- real runtime failure |
@@ -103,16 +123,13 @@ cycle). Both are now addressed at the root rather than relied upon as borderline
 | zmat.134f.ecp | reported "died in xintprc" but the real cause is the 2GB-file limit (UF₆ MBPT(2) integral list > 2GB) -- environment/limit, **not** a code bug (cf. 140.dkh) |
 | zmat.138.ccsdt | aborted in xvmol2ja (no @ACES_EXIT; segfault/hard abort) -- real runtime failure |
 | zmat.139.ccsdpt | aborted in xvmol2ja (no @ACES_EXIT; segfault/hard abort) -- real runtime failure |
-| zmat.142.hfdft | died in xintgrt -- real runtime failure |
-| zmat.143.hfdft | died in xintgrt -- real runtime failure |
-| zmat.144.hfdft | died in xintgrt -- real runtime failure |
-| zmat.145.ksgrad | died in xintgrt -- real runtime failure |
-| zmat.146.hfdft.ccsd | died in xintgrt -- real runtime failure |
 
-## REAL (8)
+## REAL (10)
 
 | test | detail |
 |---|---|
+| zmat.104.ks | KS energy off by ~11 (DFT grid integrates density to ~0 at -O2; de-crashed by the KSPRINT fix) -- grid -O2 defect |
+| zmat.105.ks | KS energy off by ~7 (same DFT grid -O2 defect; de-crashed by the KSPRINT fix) -- grid -O2 defect |
 | zmat.043.mrcc | gross deviation(s) > 1e-3 in energy/Hessian/property -- investigate |
 | zmat.044 | gross deviation(s) > 1e-3 in energy/Hessian/property -- investigate |
 | zmat.048b | gross deviation(s) > 1e-3 in energy/Hessian/property -- investigate |
@@ -152,17 +169,20 @@ cycle). Both are now addressed at the root rather than relied upon as borderline
 | zmat.140.dkh | basis exceeds the 256-function 4-byte-model limit -- environment/input/limit, not a code bug |
 | zmat.152.eommbpt2 | basis set missing from GENBAS -- environment/input/limit, not a code bug |
 
-## NONCONVERGE (5)
+## NONCONVERGE (8)
 
 | test | detail |
 |---|---|
+| zmat.142.hfdft | de-crashed by the KSPRINT+NREALATM fixes; now the KS-DFT geometry optimizer cannot converge because the KS forces are wrong (DFT grid -O2 defect) -- real, blocked on the grid defect |
+| zmat.143.hfdft | same -- de-crashed; KS forces wrong (DFT grid -O2 defect), optimizer never converges |
+| zmat.144.hfdft | same -- de-crashed; KS forces wrong (DFT grid -O2 defect), optimizer never converges |
 | zmat.121a | geometry optimizer did not converge (max steps exceeded) -- not a code bug (tolerance/max-steps; numerical noise vs reference) |
 | zmat.121b | geometry optimizer did not converge (max steps exceeded) -- not a code bug (tolerance/max-steps; numerical noise vs reference) |
 | zmat.121c | geometry optimizer did not converge (max steps exceeded) -- not a code bug (tolerance/max-steps; numerical noise vs reference) |
 | zmat.131 | geometry optimizer did not converge (max steps exceeded) -- not a code bug (tolerance/max-steps; numerical noise vs reference) |
 | zmat.134e.ecp | reported "max steps exceeded", but the real cause is a garbage ECP MBPT(2) gradient (dV/dR ≈ −334 hartree/bohr; RMS force overflows to ****) -- a **real ECP-gradient defect**, not benign |
 
-## PASS (114)
+## PASS (117)
 
 `†` = numerically correct but **HANGs** (non-terminating xvip loop; see the HANG section).
 
@@ -174,6 +194,7 @@ cycle). Both are now addressed at the root rather than relied upon as borderline
     zmat.045.tdhf zmat.046 zmat.046a zmat.046b zmat.047a zmat.047b zmat.047d zmat.048a zmat.049a
     zmat.049b zmat.053 zmat.054a zmat.054b zmat.056.mrcc zmat.057 zmat.061.mrcc zmat.062.mrcc zmat.063
     zmat.064 zmat.070.mrcc† zmat.074 zmat.082.mrcc† zmat.083 zmat.084.mrcc zmat.089.mrcc zmat.095.mrcc†
+    zmat.106.ks zmat.145.ksgrad zmat.146.hfdft.ccsd
     zmat.109 zmat.110 zmat.116a zmat.116b zmat.116c zmat.117a zmat.117b zmat.117c zmat.118a zmat.118b
     zmat.118c zmat.124a.fno zmat.124f.fno zmat.124g.fno zmat.124h.fno zmat.125a zmat.125b zmat.126b
     zmat.126c zmat.126d zmat.126f zmat.126g zmat.126h zmat.127 zmat.129 zmat.130 zmat.132 zmat.134a.ecp

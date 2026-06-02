@@ -371,8 +371,9 @@ c         end do
 
 c Check if the density is from a KS calculation.
 c If so, print the energies from the KS calculation.
-
-         call getrec(1,'JOBARC','KSPRINT',iintfp,print_post_ks)
+c KSPRINT is a single logical flag = one default-integer word; reading
+c iintfp words overruns the 4-byte logical in the 4-byte-integer model.
+         call getrec(1,'JOBARC','KSPRINT',1,print_post_ks)
 #ifdef _DEBUG
          if (print_post_ks) then
             if (int_kspot.eq.fun_hyb_b3lyp) write(*,6664)
