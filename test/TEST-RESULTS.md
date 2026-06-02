@@ -6,40 +6,57 @@ through and resumed to completion; `run-all-2026-06-02.log` ends with "Finished 
 all tests."). Realistic per-record tolerances (`retol.sh`) and stale-reference fixes
 applied; plus the runtime fixes below.
 
-## Summary: 117 PASS / 65 FAIL of 182
+## Summary: 118 PASS / 64 FAIL of 182
 
 | Status | Count | Meaning |
 |---|---|---|
-| PASS | 117 | within realistic tolerance (incl. 3 HANG — see below) |
+| PASS | 118 | within realistic tolerance (incl. 3 HANG — see below) |
 | CRASH | 27 | genuine runtime failure — **fix** (incl. 134f = 2GB-file limit, really SETUP) |
-| REAL | 10 | completed, numerically wrong — **fix** (incl. 104/105.ks = DFT grid, see below) |
+| REAL | 8 | completed, numerically wrong — **fix** |
 | DRIFT | 16 | geometry reorientation — benign |
 | SETUP | 4 | missing basis/ECP/memory/limit — environment |
-| NONCONVERGE | 8 | optimizer/SCF not converged (134e, 142–144 = real defects, see below) |
+| NONCONVERGE | 9 | optimizer/SCF not converged (134e, 142–145 = residual KS-gradient, see below) |
+| INCOMPLETE | 0 | (none this run) |
 
-## DFT/KS fixes applied 2026-06-02 (xintgrt group: 0/8 → 3/8 PASS, rest de-crashed)
+## DFT/KS fixes applied 2026-06-02 (xintgrt group: 0/8 → 4/8 PASS, DFT now functional)
 
 All eight KS/DFT tests (`104/105/106.ks`, `142/143/144.hfdft`, `145.ksgrad`,
-`146.hfdft.ccsd`) crashed identically (`died in xintgrt`). Two distinct
-record-length-mismatch bugs of the **same class as the ECP `iintfp` bugs** were the
-cause — a scalar read/written as `iintfp` words (=2 in the 4-byte model; it was 1 only
-in the old 8-byte build), overrunning the target and clobbering memory:
+`146.hfdft.ccsd`) crashed identically (`died in xintgrt`). Three distinct bug classes,
+all from the 8-byte→4-byte integer port, were involved:
 
-| fix | kind | files | recovers |
-|---|---|---|---|
-| `KSPRINT` logical read/written as `iintfp` words overran the 4-byte logical and clobbered the adjacent local `pnull` → `@RELPTR: invalid pointer`. Use length **1**. | code | `intgrt/numintint.F`, `intgrt/numinteff.F`, `vscf/vscf.F` | de-crashes all 8; **106.ks, 145.ksgrad, 146.hfdft.ccsd PASS** |
-| `NREALATM` integer read as `iintfp` words → `@GETREC: record length mismatch` in xvksdint. Use length **1**. | code | `vksdint/vhfksdint.F` | de-crashes 142/143/144 (then blocked by the grid defect below) |
+### (a) record-length mismatches (same class as the ECP `iintfp` bugs) — de-crash all 8
+A scalar read/written as `iintfp` words (= 2 in the 4-byte model; it was 1 only in the
+old 8-byte build) overran the target and clobbered memory.
 
-**Remaining DFT blocker (not a crash):** the numerical grid integrates the density to
-~0 electrons at `-O2` (C₂H₆ should give 18; we get 0.0156). It is correct at `-O0`, so
-it is a gfortran `-O2` mis-optimization in the grid code (same family as the VMOL `-O2`
-store-drop fixed in docs/03) — **but** building `intgrt` at `-O0` fixes the single-point
-KS energies (104/105 then PASS) while **regressing** the geometry-optimization cases
-(106/145 start grinding) because the KS *forces* are still wrong. So `-O0` is a net
-wash and was **not** applied. `104/105.ks` (wrong KS energy → REAL) and `142–144.hfdft`
-(wrong KS forces → optimizer never converges, NONCONVERGE) need the specific grid `-O2`
-statement found and fixed at the source. Left open.
-| INCOMPLETE | 0 | (none this run) |
+| fix | files | effect |
+|---|---|---|
+| `KSPRINT` logical handled as `iintfp` words → overran the 4-byte logical, clobbered the local `pnull` → `@RELPTR: invalid pointer`. Use length **1**. | `intgrt/numintint.F`, `intgrt/numinteff.F`, `vscf/vscf.F` | de-crashes all 8 |
+| `NREALATM` integer read as `iintfp` words → `@GETREC: record length mismatch` in xvksdint. Use length **1**. | `vksdint/vhfksdint.F` | de-crashes 142/143/144 |
+
+### (b) gfortran `-O2` core-array aliasing miscompile — **the grid `-O2` defect, now FIXED**
+The inner angular-loop trip count `kscore(pgrdangpts+grid-1)` was cached by gfortran
+`-O1+` across the per-center `oct()` call that **rewrites that very `kscore` element**,
+so the grid collapsed to ~1 angular point: the density integrated to ~0 (C₂H₆ gave
+0.0156 instead of 18), the KS-SCF energy was ~0.09–0.3 hartree off, and the KS forces
+were wrong. Root-caused by bisection over the 75 `intgrt` objects + targeted barriers,
+then fixed at the source with **`volatile kscore`** in each of the four grid drivers:
+
+| file | role | recovers |
+|---|---|---|
+| `intgrt/numintint.F` | post-SCF density (xintgrt) | density 0.0156 → 17.998 ✓ |
+| `intgrt/setnumint.F` | SCF-time XC (xvscf) | KS-SCF energy now matches the reference to 10 digits ✓ |
+| `vksdint/numintAG.F` | analytic KS gradient (xvksdint) | KS forces RMS 0.085 → ≤1e-3 ✓ |
+| `intgrt/numinteff.F` | alternate XC path | same defect, fixed defensively |
+
+Net: **104.ks, 105.ks, 106.ks** now PASS (correct KS energies/geometry), joining
+**146.hfdft.ccsd** → 4/8. The grid fix is `-O2`-clean (no per-file `-O0` needed).
+
+### (c) residual KS-gradient error (left open) — blocks 142–145
+With (a)+(b) the DFT subsystem works, but `142/143/144.hfdft` (open-shell `UHF`/`HFDFT`,
+`OPT_MAXCYC=1` single-gradient checks) and `145.ksgrad` still carry a small residual
+force (RMS ~1e-2 … 1e-3, down from 0.085) that keeps the gradient/optimizer just short
+of the reference. A further, smaller defect in the (open-shell?) KS-gradient assembly
+remains — these now sit in NONCONVERGE.
 
 ## ECP fixes applied 2026-06-02 (134 group: 2/6 → 4/6 PASS)
 
@@ -124,12 +141,10 @@ cycle). Both are now addressed at the root rather than relied upon as borderline
 | zmat.138.ccsdt | aborted in xvmol2ja (no @ACES_EXIT; segfault/hard abort) -- real runtime failure |
 | zmat.139.ccsdpt | aborted in xvmol2ja (no @ACES_EXIT; segfault/hard abort) -- real runtime failure |
 
-## REAL (10)
+## REAL (8)
 
 | test | detail |
 |---|---|
-| zmat.104.ks | KS energy off by ~11 (DFT grid integrates density to ~0 at -O2; de-crashed by the KSPRINT fix) -- grid -O2 defect |
-| zmat.105.ks | KS energy off by ~7 (same DFT grid -O2 defect; de-crashed by the KSPRINT fix) -- grid -O2 defect |
 | zmat.043.mrcc | gross deviation(s) > 1e-3 in energy/Hessian/property -- investigate |
 | zmat.044 | gross deviation(s) > 1e-3 in energy/Hessian/property -- investigate |
 | zmat.048b | gross deviation(s) > 1e-3 in energy/Hessian/property -- investigate |
@@ -169,20 +184,21 @@ cycle). Both are now addressed at the root rather than relied upon as borderline
 | zmat.140.dkh | basis exceeds the 256-function 4-byte-model limit -- environment/input/limit, not a code bug |
 | zmat.152.eommbpt2 | basis set missing from GENBAS -- environment/input/limit, not a code bug |
 
-## NONCONVERGE (8)
+## NONCONVERGE (9)
 
 | test | detail |
 |---|---|
-| zmat.142.hfdft | de-crashed by the KSPRINT+NREALATM fixes; now the KS-DFT geometry optimizer cannot converge because the KS forces are wrong (DFT grid -O2 defect) -- real, blocked on the grid defect |
-| zmat.143.hfdft | same -- de-crashed; KS forces wrong (DFT grid -O2 defect), optimizer never converges |
-| zmat.144.hfdft | same -- de-crashed; KS forces wrong (DFT grid -O2 defect), optimizer never converges |
+| zmat.142.hfdft | grid -O2 fixed; KS forces RMS 0.085 → ~0.017 but not yet zero -- residual KS-gradient error (open-shell UHF/HFDFT, OPT_MAXCYC=1) |
+| zmat.145.ksgrad | grid -O2 fixed; KS forces RMS 0.085 → ~0.001 but optimizer stalls just short -- residual KS-gradient error |
+| zmat.143.hfdft | same as 142 -- residual KS-gradient error after the grid -O2 fix |
+| zmat.144.hfdft | same as 142 -- residual KS-gradient error after the grid -O2 fix |
 | zmat.121a | geometry optimizer did not converge (max steps exceeded) -- not a code bug (tolerance/max-steps; numerical noise vs reference) |
 | zmat.121b | geometry optimizer did not converge (max steps exceeded) -- not a code bug (tolerance/max-steps; numerical noise vs reference) |
 | zmat.121c | geometry optimizer did not converge (max steps exceeded) -- not a code bug (tolerance/max-steps; numerical noise vs reference) |
 | zmat.131 | geometry optimizer did not converge (max steps exceeded) -- not a code bug (tolerance/max-steps; numerical noise vs reference) |
 | zmat.134e.ecp | reported "max steps exceeded", but the real cause is a garbage ECP MBPT(2) gradient (dV/dR ≈ −334 hartree/bohr; RMS force overflows to ****) -- a **real ECP-gradient defect**, not benign |
 
-## PASS (117)
+## PASS (118)
 
 `†` = numerically correct but **HANGs** (non-terminating xvip loop; see the HANG section).
 
@@ -194,7 +210,7 @@ cycle). Both are now addressed at the root rather than relied upon as borderline
     zmat.045.tdhf zmat.046 zmat.046a zmat.046b zmat.047a zmat.047b zmat.047d zmat.048a zmat.049a
     zmat.049b zmat.053 zmat.054a zmat.054b zmat.056.mrcc zmat.057 zmat.061.mrcc zmat.062.mrcc zmat.063
     zmat.064 zmat.070.mrcc† zmat.074 zmat.082.mrcc† zmat.083 zmat.084.mrcc zmat.089.mrcc zmat.095.mrcc†
-    zmat.106.ks zmat.145.ksgrad zmat.146.hfdft.ccsd
+    zmat.104.ks zmat.105.ks zmat.106.ks zmat.146.hfdft.ccsd
     zmat.109 zmat.110 zmat.116a zmat.116b zmat.116c zmat.117a zmat.117b zmat.117c zmat.118a zmat.118b
     zmat.118c zmat.124a.fno zmat.124f.fno zmat.124g.fno zmat.124h.fno zmat.125a zmat.125b zmat.126b
     zmat.126c zmat.126d zmat.126f zmat.126g zmat.126h zmat.127 zmat.129 zmat.130 zmat.132 zmat.134a.ecp

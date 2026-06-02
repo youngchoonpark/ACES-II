@@ -24,6 +24,13 @@
        integer ivalprim,igradprim
 
        integer pprimao,pprimaol
+c gfortran -O1+ caches the integer-core load kscore(pgrdangpts+grid-1)
+c (the inner angular-loop trip count) across the per-center oct() call
+c that rewrites that very element, collapsing the SCF-time grid to ~1
+c angular point so the KS exchange-correlation was wrong (the KS-SCF
+c energy came out ~0.09 hartree off). Mark the core array volatile here
+c so every kscore read is re-issued. (Same defect/fix as numintint.F.)
+       volatile kscore
 
         M_REAL
      &  factor,times(20),totwt

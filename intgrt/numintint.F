@@ -35,6 +35,12 @@
       logical dograd,hfdftgrad 
 
       integer i, j, naonao
+c gfortran -O1+ caches the integer-core load kscore(pgrdangpts+grid-1)
+c (the inner angular-loop trip count) across the per-center oct() call
+c that rewrites that very element, so the grid collapsed to ~1 angular
+c point and the density integrated to ~0 (xintgrt). Mark the core array
+c volatile here so every kscore read is re-issued from memory.
+      volatile kscore
 
       M_REAL
      &    times(20)

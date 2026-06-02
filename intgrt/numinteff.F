@@ -16,6 +16,13 @@
 #include <dftfunc.com>
 
       integer intnumradpts,max_angpts,rshift
+c gfortran -O1+ caches the integer-core load kscore(pgrdangpts+grid-1)
+c (the inner angular-loop trip count) across the per-center oct() call
+c that rewrites that very element, collapsing the grid to ~1 angular
+c point so the SCF-time XC integral was ~0. Mark the core array volatile
+c here so every kscore read is re-issued from memory. (Same defect and
+c fix as numintint.F, which drives the post-SCF xintgrt pass.)
+      volatile kscore
 
       integer ncount,ncnt,nnn,ifctr,zirrtmp,zradpt,zrwt,
      &    zwtintr,zrtmp,zrint,setptr,iradpt,iangpt,

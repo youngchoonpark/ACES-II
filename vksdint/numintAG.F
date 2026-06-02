@@ -23,6 +23,13 @@
 
       integer ppjj,imap2z,tgradient,NA
       integer basorder,zgradfinal,pchrgRatom
+c gfortran -O1+ caches the integer-core load kscore(pgrdangpts+grid-1)
+c (the inner angular-loop trip count) across the per-center oct() call
+c that rewrites that very element, collapsing the analytic-gradient grid
+c to ~1 angular point so the KS forces were wrong and KS geometry
+c optimizations never converged. Mark the core array volatile here so
+c every kscore read is re-issued. (Same defect/fix as numintint.F.)
+      volatile kscore
 
       integer zvalgrad2ao,zgrad2prim
       M_REAL
